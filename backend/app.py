@@ -1144,6 +1144,7 @@ def get_all_devices():
 def get_admin_stats():
     with get_db_context() as conn:
         cursor = conn.cursor()
+        current_time = get_timestamp()
         
         cursor.execute('SELECT COUNT(*) as total FROM shops')
         shop_count = cursor.fetchone()['total']
@@ -1160,12 +1161,105 @@ def get_admin_stats():
         cursor.execute("SELECT COUNT(*) as total FROM shop_devices WHERE status = 'active'")
         active_devices = cursor.fetchone()['total']
         
+        cursor.execute("""
+            SELECT COUNT(*) as total FROM shops 
+            WHERE payment_status = 'pending' OR payment_status IS NULL OR payment_status = 'overdue'
+        """)
+        unpaid_shops = cursor.fetchone()['total']
+        
+        cursor.execute("""
+            SELECT COUNT(*) as total FROM shops 
+            WHERE payment_status = 'paid'
+        """)
+        paid_shops = cursor.fetchone()['total']
+        
+        cursor.execute("""
+            SELECT COUNT(*) as total FROM shop_devices 
+            WHERE expires_at IS NOT NULL AND expires_at < ?
+        """, (current_time,))
+        expired_subscriptions = cursor.fetchone()['total']
+        
         return jsonify({
             'total_shops': shop_count,
             'total_devices': device_count,
             'unused_product_keys': unused_keys,
             'used_product_keys': used_keys,
-            'active_devices': active_devices
+            'active_devices': active_devices,
+            'unpaid_shops': unpaid_shops,
+            'paid_shops': paid_shops,
+            'expired_subscriptions': expired_subscriptions
+        })
+
+@app.route('/api/admin/subscriptions', methods=['GET'])
+@require_admin
+def get_subscriptions():
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        current_time = get_timestamp()
+        
+        cursor.execute('''
+            SELECT s.id, s.name, s.owner_name, s.owner_surname, s.phone_number,
+                   s.subscription_start, s.subscription_end, s.last_payment_date, 
+                   s.payment_status, s.created_at,
+                   (SELECT MIN(sd.activated_at) FROM shop_devices sd WHERE sd.shop_id = s.id) as first_activation,
+                   (SELECT MAX(sd.expires_at) FROM shop_devices sd WHERE sd.shop_id = s.id) as latest_expiry,
+                   (SELECT COUNT(*) FROM shop_devices sd WHERE sd.shop_id = s.id AND sd.status = 'active') as active_devices
+            FROM shops s
+            ORDER BY s.created_at DESC
+        ''')
+        
+        subscriptions = []
+        for row in cursor.fetchall():
+            sub = dict(row)
+            first_activation = sub.get('first_activation') or sub.get('subscription_start')
+            latest_expiry = sub.get('latest_expiry') or sub.get('subscription_end')
+            
+            if latest_expiry and latest_expiry < current_time:
+                sub['status'] = 'expired'
+            elif sub.get('payment_status') == 'paid':
+                sub['status'] = 'active'
+            elif first_activation:
+                sub['status'] = 'pending_payment'
+            else:
+                sub['status'] = 'not_activated'
+            
+            sub['subscription_start'] = first_activation
+            sub['subscription_end'] = latest_expiry
+            subscriptions.append(sub)
+        
+        return jsonify(subscriptions)
+
+@app.route('/api/admin/subscriptions/<shop_id>/mark-paid', methods=['POST'])
+@require_admin
+def mark_subscription_paid(shop_id):
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        current_time = get_timestamp()
+        
+        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Shop not found'}), 404
+        
+        thirty_days_ms = 30 * 24 * 60 * 60 * 1000
+        new_end = current_time + thirty_days_ms
+        
+        cursor.execute('''
+            UPDATE shops 
+            SET payment_status = 'paid', 
+                last_payment_date = ?,
+                subscription_end = ?
+            WHERE id = ?
+        ''', (current_time, new_end, shop_id))
+        
+        cursor.execute('''
+            UPDATE shop_devices 
+            SET expires_at = ?, status = 'active'
+            WHERE shop_id = ?
+        ''', (new_end, shop_id))
+        
+        return jsonify({
+            'message': 'Subscription marked as paid',
+            'new_expiry': new_end
         })
 
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')

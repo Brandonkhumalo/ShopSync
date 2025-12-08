@@ -599,4 +599,16 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         editor.putBoolean(PREF_IS_ACTIVATED, false);
         editor.apply();
     }
+    
+    private static final String PREF_PRODUCT_KEY = "product_key";
+    
+    public void saveProductKey(String productKey) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(PREF_PRODUCT_KEY, productKey).apply();
+    }
+    
+    public String getStoredProductKey() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(PREF_PRODUCT_KEY, null);
+    }
 }

@@ -58,6 +58,10 @@
             android:name=".Activities.RegisterActivity"
             android:exported="false" />
         <activity
+            android:name=".Activities.TermsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ShopSync" />
+        <activity
             android:name=".Activities.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.FrostSync.Splash">

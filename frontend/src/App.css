@@ -420,6 +420,84 @@ body {
   background: #ddd;
 }
 
+.stat-card.warning {
+  border-left: 4px solid #f59e0b;
+}
+
+.stat-card.success {
+  border-left: 4px solid #10b981;
+}
+
+.stat-card.danger {
+  border-left: 4px solid #ef4444;
+}
+
+.sub-header {
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+}
+
+.row-warning {
+  background-color: #fef3c7 !important;
+}
+
+.row-warning:hover {
+  background-color: #fde68a !important;
+}
+
+.mark-paid-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.mark-paid-btn:hover {
+  background: #059669;
+}
+
+.mark-paid-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.paid-label {
+  color: #10b981;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.days-warning {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+.days-expired {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.expired {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.status-badge.inactive {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
 @media (max-width: 768px) {
   .header {
     padding: 16px 20px;

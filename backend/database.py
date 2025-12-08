@@ -58,6 +58,19 @@ def apply_schema_migrations(cursor):
         if 'expires_at' not in columns:
             cursor.execute("ALTER TABLE shops ADD COLUMN expires_at INTEGER")
         cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_activated_at_to_shops',))
+    
+    if 'add_subscription_tracking' not in applied:
+        cursor.execute("PRAGMA table_info(shops)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'subscription_start' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN subscription_start INTEGER")
+        if 'subscription_end' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN subscription_end INTEGER")
+        if 'last_payment_date' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN last_payment_date INTEGER")
+        if 'payment_status' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN payment_status TEXT DEFAULT 'pending'")
+        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_subscription_tracking',))
 
 def create_admin_tables(cursor):
     """Create admin-related tables"""

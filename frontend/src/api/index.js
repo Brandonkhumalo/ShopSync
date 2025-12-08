@@ -66,3 +66,27 @@ export async function getDevices(token) {
   }
   return response.json()
 }
+
+export async function getSubscriptions(token) {
+  const response = await fetch(`${API_BASE}/subscriptions`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  if (!response.ok) {
+    throw new Error('Failed to fetch subscriptions')
+  }
+  return response.json()
+}
+
+export async function markSubscriptionPaid(token, shopId) {
+  const response = await fetch(`${API_BASE}/subscriptions/${shopId}/mark-paid`, {
+    method: 'POST',
+    headers: { 
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  })
+  if (!response.ok) {
+    throw new Error('Failed to mark subscription as paid')
+  }
+  return response.json()
+}

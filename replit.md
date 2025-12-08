@@ -8,6 +8,10 @@ ShopSync is a Flask-based REST API backend for an Android shop management applic
 
 ## Recent Changes
 
+- **2024-12-08**: Added Terms & Conditions screen to Android app (TermsActivity) with $10/month subscription agreement
+- **2024-12-08**: Added product key validation on first launch when internet is available
+- **2024-12-08**: Added subscription tracking system (subscription_start, subscription_end, payment_status fields)
+- **2024-12-08**: Added Subscriptions tab to admin dashboard with payment tracking and "Mark Paid" functionality
 - **2024-12-08**: Added React admin dashboard at `/admin` with JWT authentication
 - **2024-12-08**: Added database schema migrations for missing columns (app_id, product_key, activated_at, expires_at)
 - **2024-12-08**: Created admin account: shopsyncadmin@gmail.com
@@ -99,18 +103,27 @@ Located in `frontend/` directory:
 - Built to `frontend/dist/` and served by Flask at `/admin`
 - Features:
   - Admin login with JWT authentication
-  - Overview dashboard with system statistics
+  - Overview dashboard with system statistics (including unpaid/paid shops count)
   - Product key management (view all, generate new)
   - Shops listing with device/item/sales counts
   - Device monitoring with status tracking
+  - **Subscriptions tab** - Track subscription payments, show start/end dates, mark as paid
 
 ### Admin API Endpoints
 - `POST /api/admin/login` - Admin authentication, returns JWT token
-- `GET /api/admin/stats` - System statistics (shops, devices, product keys)
+- `GET /api/admin/stats` - System statistics (shops, devices, product keys, unpaid/paid shops)
 - `GET /api/admin/product-keys` - List all product keys with status
 - `POST /api/admin/product-keys` - Generate new product key
 - `GET /api/admin/shops` - List all shops with counts
 - `GET /api/admin/devices` - List all registered devices
+- `GET /api/admin/subscriptions` - List all shops with subscription status and dates
+- `POST /api/admin/subscriptions/<shop_id>/mark-paid` - Mark subscription as paid (extends 30 days)
+
+### Mobile App Flow
+1. **Splash Screen** - Shows app logo for 2 seconds
+2. **Terms & Conditions** - On first launch, user must accept $10/month subscription terms
+3. **Product Key Validation** - On first internet connection, validates product key with server
+4. **Registration/Login** - If no shop exists, goes to registration; otherwise PIN login
 
 ### Admin Credentials
 - Email: shopsyncadmin@gmail.com

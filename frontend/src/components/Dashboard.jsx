@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getStats, getProductKeys, getShops, getDevices, generateProductKey } from '../api'
+import { getStats, getProductKeys, getShops, getDevices, generateProductKey, getSubscriptions, markSubscriptionPaid } from '../api'
 
 function Dashboard({ token, email, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview')
@@ -7,9 +7,11 @@ function Dashboard({ token, email, onLogout }) {
   const [productKeys, setProductKeys] = useState([])
   const [shops, setShops] = useState([])
   const [devices, setDevices] = useState([])
+  const [subscriptions, setSubscriptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [newKey, setNewKey] = useState(null)
+  const [markingPaid, setMarkingPaid] = useState(null)
 
   useEffect(() => {
     loadData()
@@ -18,16 +20,18 @@ function Dashboard({ token, email, onLogout }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [statsData, keysData, shopsData, devicesData] = await Promise.all([
+      const [statsData, keysData, shopsData, devicesData, subsData] = await Promise.all([
         getStats(token),
         getProductKeys(token),
         getShops(token),
-        getDevices(token)
+        getDevices(token),
+        getSubscriptions(token)
       ])
       setStats(statsData)
       setProductKeys(keysData)
       setShops(shopsData)
       setDevices(devicesData)
+      setSubscriptions(subsData)
     } catch (err) {
       console.error('Failed to load data:', err)
       if (err.message.includes('401') || err.message.includes('expired')) {
@@ -51,6 +55,21 @@ function Dashboard({ token, email, onLogout }) {
     }
   }
 
+  const handleMarkPaid = async (shopId) => {
+    if (!confirm('Mark this subscription as paid? This will extend their license by 30 days.')) {
+      return
+    }
+    setMarkingPaid(shopId)
+    try {
+      await markSubscriptionPaid(token, shopId)
+      loadData()
+    } catch (err) {
+      alert('Failed to mark as paid: ' + err.message)
+    } finally {
+      setMarkingPaid(null)
+    }
+  }
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
     alert('Copied to clipboard!')
@@ -59,6 +78,35 @@ function Dashboard({ token, email, onLogout }) {
   const formatDate = (timestamp) => {
     if (!timestamp) return '-'
     return new Date(timestamp).toLocaleString()
+  }
+
+  const formatDateShort = (timestamp) => {
+    if (!timestamp) return '-'
+    return new Date(timestamp).toLocaleDateString()
+  }
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active':
+      case 'paid':
+        return 'active'
+      case 'expired':
+      case 'overdue':
+        return 'expired'
+      case 'pending_payment':
+      case 'pending':
+        return 'pending'
+      default:
+        return 'inactive'
+    }
+  }
+
+  const getDaysRemaining = (expiresAt) => {
+    if (!expiresAt) return null
+    const now = Date.now()
+    const diff = expiresAt - now
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+    return days
   }
 
   return (
@@ -77,6 +125,12 @@ function Dashboard({ token, email, onLogout }) {
           onClick={() => setActiveTab('overview')}
         >
           Overview
+        </button>
+        <button 
+          className={`nav-tab ${activeTab === 'subscriptions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('subscriptions')}
+        >
+          Subscriptions
         </button>
         <button 
           className={`nav-tab ${activeTab === 'keys' ? 'active' : ''}`}
@@ -118,6 +172,18 @@ function Dashboard({ token, email, onLogout }) {
                     <h3>Active Devices</h3>
                     <div className="value">{stats.active_devices}</div>
                   </div>
+                  <div className="stat-card warning">
+                    <h3>Unpaid Shops</h3>
+                    <div className="value">{stats.unpaid_shops}</div>
+                  </div>
+                  <div className="stat-card success">
+                    <h3>Paid Shops</h3>
+                    <div className="value">{stats.paid_shops}</div>
+                  </div>
+                  <div className="stat-card danger">
+                    <h3>Expired Subscriptions</h3>
+                    <div className="value">{stats.expired_subscriptions}</div>
+                  </div>
                   <div className="stat-card">
                     <h3>Unused Keys</h3>
                     <div className="value">{stats.unused_product_keys}</div>
@@ -138,6 +204,83 @@ function Dashboard({ token, email, onLogout }) {
                 >
                   {generating ? 'Generating...' : 'Generate New Product Key'}
                 </button>
+              </>
+            )}
+
+            {activeTab === 'subscriptions' && (
+              <>
+                <div className="section-header">
+                  <h2>Subscription Management</h2>
+                  <span className="sub-header">Track payments and subscription status ($10/month per shop)</span>
+                </div>
+                
+                {subscriptions.length === 0 ? (
+                  <div className="data-table">
+                    <div className="empty-state">
+                      <h3>No subscriptions yet</h3>
+                      <p>Subscriptions will appear here when shops activate their product keys</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="data-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Shop Name</th>
+                          <th>Owner</th>
+                          <th>Phone</th>
+                          <th>Status</th>
+                          <th>Subscription Start</th>
+                          <th>Subscription End</th>
+                          <th>Last Payment</th>
+                          <th>Days Left</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subscriptions.map(sub => {
+                          const daysLeft = getDaysRemaining(sub.subscription_end)
+                          return (
+                            <tr key={sub.id} className={sub.status === 'expired' || sub.status === 'pending_payment' ? 'row-warning' : ''}>
+                              <td><strong>{sub.name}</strong></td>
+                              <td>{sub.owner_name} {sub.owner_surname}</td>
+                              <td>{sub.phone_number}</td>
+                              <td>
+                                <span className={`status-badge ${getStatusColor(sub.status)}`}>
+                                  {sub.status === 'pending_payment' ? 'UNPAID' : sub.status.toUpperCase()}
+                                </span>
+                              </td>
+                              <td>{formatDateShort(sub.subscription_start)}</td>
+                              <td>{formatDateShort(sub.subscription_end)}</td>
+                              <td>{formatDateShort(sub.last_payment_date)}</td>
+                              <td>
+                                {daysLeft !== null ? (
+                                  <span className={daysLeft <= 5 ? 'days-warning' : daysLeft <= 0 ? 'days-expired' : ''}>
+                                    {daysLeft <= 0 ? 'Expired' : `${daysLeft} days`}
+                                  </span>
+                                ) : '-'}
+                              </td>
+                              <td>
+                                {(sub.status === 'pending_payment' || sub.status === 'expired' || sub.payment_status !== 'paid') && (
+                                  <button 
+                                    className="mark-paid-btn"
+                                    onClick={() => handleMarkPaid(sub.id)}
+                                    disabled={markingPaid === sub.id}
+                                  >
+                                    {markingPaid === sub.id ? 'Processing...' : 'Mark Paid'}
+                                  </button>
+                                )}
+                                {sub.status === 'active' && sub.payment_status === 'paid' && (
+                                  <span className="paid-label">Paid</span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </>
             )}
 

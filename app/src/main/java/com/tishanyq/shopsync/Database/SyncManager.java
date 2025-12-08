@@ -246,6 +246,47 @@ public class SyncManager {
         }
     }
     
+    public String validateProductKey(String shopId, String productKey) {
+        if (BACKEND_URL.isEmpty()) {
+            return "{\"valid\": true, \"status\": \"active\"}";
+        }
+        
+        if (!isNetworkAvailable()) {
+            return "{\"error\": \"No network connection\"}";
+        }
+        
+        try {
+            String appId = db.getAppId();
+            URL url = new URL(BACKEND_URL + "/api/shops/" + shopId + "/devices/" + appId + "/status");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-App-Id", appId);
+            
+            int responseCode = conn.getResponseCode();
+            BufferedReader reader;
+            
+            if (responseCode == 200) {
+                reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            } else {
+                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+            }
+            
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+            conn.disconnect();
+            
+            return response.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{\"error\": \"" + e.getMessage() + "\"}";
+        }
+    }
+    
     public String renewLicense(String shopId, String appId, String productKey) {
         if (BACKEND_URL.isEmpty()) {
             return "{\"error\": \"Backend not configured\"}";
