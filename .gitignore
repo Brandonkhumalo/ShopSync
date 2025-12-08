@@ -13,3 +13,29 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+.eggs/
+*.egg-info/
+*.egg
+dist/
+build/
+.venv/
+venv/
+.pythonlibs/
+.env
+.uv/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
