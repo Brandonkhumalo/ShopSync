@@ -3,10 +3,17 @@ import uuid
 import time
 import secrets
 import string
+import jwt
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+from werkzeug.security import check_password_hash
 from database import init_db, get_db_context
+
+SECRET_KEY = os.environ.get('SESSION_SECRET')
+if not SECRET_KEY:
+    import secrets as sec_module
+    SECRET_KEY = sec_module.token_hex(32)
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
@@ -1016,6 +1023,160 @@ def get_license_info(shop_id, app_id):
             'days_remaining': days_remaining,
             'whatsapp_support': '+263788539918'
         })
+
+def require_admin(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({'error': 'Authorization required'}), 401
+        
+        token = auth_header.split(' ')[1]
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            if payload.get('role') != 'admin':
+                return jsonify({'error': 'Admin access required'}), 403
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 401
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not email or not password:
+        return jsonify({'error': 'Email and password required'}), 400
+    
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, email, password_hash FROM admin_users WHERE email = ?', (email,))
+        admin = cursor.fetchone()
+        
+        if not admin or not check_password_hash(admin['password_hash'], password):
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        cursor.execute('UPDATE admin_users SET last_login_at = ? WHERE id = ?', (get_timestamp(), admin['id']))
+        
+        token = jwt.encode({
+            'admin_id': admin['id'],
+            'email': admin['email'],
+            'role': 'admin',
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, SECRET_KEY, algorithm='HS256')
+        
+        return jsonify({'token': token, 'email': admin['email']})
+
+@app.route('/api/admin/product-keys', methods=['GET'])
+@require_admin
+def get_all_product_keys():
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT pk.*, s.name as shop_name 
+            FROM product_keys pk 
+            LEFT JOIN shops s ON pk.shop_id = s.id
+            ORDER BY pk.created_at DESC
+        ''')
+        keys = [dict(row) for row in cursor.fetchall()]
+        return jsonify(keys)
+
+@app.route('/api/admin/product-keys', methods=['POST'])
+@require_admin
+def admin_create_product_key():
+    key_id = generate_id('KEY_')
+    product_key = generate_product_key()
+    
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO product_keys (id, product_key, status, created_at)
+            VALUES (?, ?, 'unused', ?)
+        ''', (key_id, product_key, get_timestamp()))
+    
+    return jsonify({
+        'id': key_id,
+        'product_key': product_key,
+        'status': 'unused',
+        'message': 'Product key generated successfully'
+    }), 201
+
+@app.route('/api/admin/shops', methods=['GET'])
+@require_admin
+def get_all_shops():
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT s.*, 
+                   (SELECT COUNT(*) FROM shop_devices sd WHERE sd.shop_id = s.id) as device_count,
+                   (SELECT COUNT(*) FROM items i WHERE i.shop_id = s.id) as item_count,
+                   (SELECT COUNT(*) FROM sales sa WHERE sa.shop_id = s.id) as sale_count
+            FROM shops s
+            ORDER BY s.created_at DESC
+        ''')
+        shops = [dict(row) for row in cursor.fetchall()]
+        return jsonify(shops)
+
+@app.route('/api/admin/devices', methods=['GET'])
+@require_admin
+def get_all_devices():
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT sd.*, s.name as shop_name 
+            FROM shop_devices sd 
+            LEFT JOIN shops s ON sd.shop_id = s.id
+            ORDER BY sd.registered_at DESC
+        ''')
+        devices = [dict(row) for row in cursor.fetchall()]
+        return jsonify(devices)
+
+@app.route('/api/admin/stats', methods=['GET'])
+@require_admin
+def get_admin_stats():
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT COUNT(*) as total FROM shops')
+        shop_count = cursor.fetchone()['total']
+        
+        cursor.execute('SELECT COUNT(*) as total FROM shop_devices')
+        device_count = cursor.fetchone()['total']
+        
+        cursor.execute("SELECT COUNT(*) as total FROM product_keys WHERE status = 'unused'")
+        unused_keys = cursor.fetchone()['total']
+        
+        cursor.execute("SELECT COUNT(*) as total FROM product_keys WHERE status = 'used'")
+        used_keys = cursor.fetchone()['total']
+        
+        cursor.execute("SELECT COUNT(*) as total FROM shop_devices WHERE status = 'active'")
+        active_devices = cursor.fetchone()['total']
+        
+        return jsonify({
+            'total_shops': shop_count,
+            'total_devices': device_count,
+            'unused_product_keys': unused_keys,
+            'used_product_keys': used_keys,
+            'active_devices': active_devices
+        })
+
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
+
+@app.route('/admin')
+@app.route('/admin/')
+@app.route('/admin/<path:path>')
+def serve_admin(path=''):
+    if path and os.path.exists(os.path.join(FRONTEND_DIR, path)):
+        return send_from_directory(FRONTEND_DIR, path)
+    return send_from_directory(FRONTEND_DIR, 'index.html')
 
 if __name__ == '__main__':
     init_db()

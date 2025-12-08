@@ -4,6 +4,15 @@
 
 ShopSync is a Flask-based REST API backend for an Android shop management application. The system handles inventory management, sales tracking, debt management, and multi-device shop synchronization. It uses SQLite as the data store and provides endpoints for shops to manage their products, record transactions, track customer debts, and synchronize data across multiple devices.
 
+**Admin Dashboard**: A React-based admin panel is available at `/admin` for managing shops, product keys, and viewing system statistics.
+
+## Recent Changes
+
+- **2024-12-08**: Added React admin dashboard at `/admin` with JWT authentication
+- **2024-12-08**: Added database schema migrations for missing columns (app_id, product_key, activated_at, expires_at)
+- **2024-12-08**: Created admin account: shopsyncadmin@gmail.com
+- **2024-12-08**: Added admin API endpoints for product key management, shops listing, and device monitoring
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -14,7 +23,8 @@ Preferred communication style: Simple, everyday language.
 - **Flask (Python 3.11)** - Chosen for its lightweight, flexible nature and ease of rapid development
 - Runs on port 5000 by default
 - RESTful API design pattern for consistent endpoint structure
-- No authentication middleware currently implemented, but device-level validation exists via app_id/shop_id pairs
+- **JWT-based admin authentication** for admin dashboard access
+- Device-level validation via app_id/shop_id pairs for mobile app
 
 ### Data Storage
 - **SQLite3** - Embedded relational database chosen for:
@@ -82,6 +92,29 @@ Design decisions:
 ### Database
 - **SQLite3** - Bundled with Python, no external server required
 - Database file: `shopsync.db` (auto-created on first run via `init_db()`)
+
+### Admin Dashboard (React Frontend)
+Located in `frontend/` directory:
+- **React + Vite** - Fast build tooling and development experience
+- Built to `frontend/dist/` and served by Flask at `/admin`
+- Features:
+  - Admin login with JWT authentication
+  - Overview dashboard with system statistics
+  - Product key management (view all, generate new)
+  - Shops listing with device/item/sales counts
+  - Device monitoring with status tracking
+
+### Admin API Endpoints
+- `POST /api/admin/login` - Admin authentication, returns JWT token
+- `GET /api/admin/stats` - System statistics (shops, devices, product keys)
+- `GET /api/admin/product-keys` - List all product keys with status
+- `POST /api/admin/product-keys` - Generate new product key
+- `GET /api/admin/shops` - List all shops with counts
+- `GET /api/admin/devices` - List all registered devices
+
+### Admin Credentials
+- Email: shopsyncadmin@gmail.com
+- Password: shopsyncadmin123%
 
 ### Potential Future Integrations
 The architecture suggests these systems may be integrated later:

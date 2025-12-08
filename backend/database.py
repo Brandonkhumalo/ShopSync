@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from contextlib import contextmanager
+from werkzeug.security import generate_password_hash
 
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'shopsync.db')
 
@@ -21,6 +22,74 @@ def get_db_context():
         raise e
     finally:
         conn.close()
+
+def apply_schema_migrations(cursor):
+    """Apply schema migrations to ensure all columns exist"""
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            migration_name TEXT UNIQUE NOT NULL,
+            applied_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+        )
+    ''')
+    
+    cursor.execute("SELECT migration_name FROM schema_migrations")
+    applied = {row[0] for row in cursor.fetchall()}
+    
+    if 'add_app_id_to_shops' not in applied:
+        cursor.execute("PRAGMA table_info(shops)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'app_id' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN app_id TEXT")
+        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_app_id_to_shops',))
+    
+    if 'add_product_key_to_shops' not in applied:
+        cursor.execute("PRAGMA table_info(shops)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'product_key' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN product_key TEXT")
+        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_product_key_to_shops',))
+    
+    if 'add_activated_at_to_shops' not in applied:
+        cursor.execute("PRAGMA table_info(shops)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'activated_at' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN activated_at INTEGER")
+        if 'expires_at' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN expires_at INTEGER")
+        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_activated_at_to_shops',))
+
+def create_admin_tables(cursor):
+    """Create admin-related tables"""
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS admin_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+            last_login_at INTEGER
+        )
+    ''')
+
+def seed_admin_user(cursor):
+    """Create default admin user if not exists"""
+    cursor.execute("SELECT id FROM admin_users WHERE email = ?", ('shopsyncadmin@gmail.com',))
+    if not cursor.fetchone():
+        password_hash = generate_password_hash('shopsyncadmin123%')
+        cursor.execute('''
+            INSERT INTO admin_users (email, password_hash)
+            VALUES (?, ?)
+        ''', ('shopsyncadmin@gmail.com', password_hash))
+
+def clear_all_data(cursor):
+    """Clear all shops, product keys, and related data"""
+    cursor.execute("DELETE FROM sync_logs")
+    cursor.execute("DELETE FROM debts")
+    cursor.execute("DELETE FROM sales")
+    cursor.execute("DELETE FROM items")
+    cursor.execute("DELETE FROM shop_devices")
+    cursor.execute("DELETE FROM product_keys")
+    cursor.execute("DELETE FROM shops")
 
 def init_db():
     with get_db_context() as conn:
@@ -147,3 +216,7 @@ def init_db():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_product_keys_status ON product_keys(status)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_shop_devices_shop ON shop_devices(shop_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_shop_devices_app ON shop_devices(app_id)')
+        
+        apply_schema_migrations(cursor)
+        create_admin_tables(cursor)
+        seed_admin_user(cursor)
