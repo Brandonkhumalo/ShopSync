@@ -14,7 +14,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "shopsync.db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 1;
     
     private static final String PREFS_NAME = "ShopSyncPrefs";
     private static final String PREF_APP_ID = "app_id";

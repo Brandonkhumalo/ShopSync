@@ -41,7 +41,7 @@ public class HomeActivity extends AppCompatActivity {
     private ExecutorService executor;
     private Handler mainHandler;
     
-    private static final String BACKEND_URL = "";
+    private static final String BACKEND_URL = "http://192.168.1.13:5000";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

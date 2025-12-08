@@ -75,7 +75,8 @@
                         android:id="@+id/et_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="textPersonName" />
+                        android:inputType="textPersonName"
+                        android:textColor="@color/primary_blue_dark"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -93,7 +94,8 @@
                         android:id="@+id/et_surname"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="textPersonName" />
+                        android:inputType="textPersonName"
+                        android:textColor="@color/primary_blue_dark"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -105,13 +107,15 @@
                     app:boxCornerRadiusTopEnd="12dp"
                     app:boxCornerRadiusBottomStart="12dp"
                     app:boxCornerRadiusBottomEnd="12dp"
+                    android:textColor="@color/primary_blue_dark"
                     app:prefixText="+263 ">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_phone"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="phone" />
+                        android:inputType="phone"
+                        android:textColor="@color/primary_blue_dark"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
             </LinearLayout>
@@ -156,7 +160,8 @@
                         android:id="@+id/et_shop_name"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text" />
+                        android:inputType="text"
+                        android:textColor="@color/primary_blue_dark"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -169,13 +174,15 @@
                     app:boxCornerRadiusBottomStart="12dp"
                     app:boxCornerRadiusBottomEnd="12dp"
                     app:helperText="e.g., Gas, Supermarket, Wholesaler"
-                    android:layout_marginBottom="12dp">
+                    android:layout_marginBottom="12dp"
+                    android:textColor="@color/primary_blue_dark">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/et_services"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text" />
+                        android:inputType="text"
+                        android:textColor="@color/primary_blue_dark"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -193,7 +200,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textMultiLine"
-                        android:minLines="2" />
+                        android:minLines="2"
+                        android:textColor="@color/primary_blue_dark"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
             </LinearLayout>
