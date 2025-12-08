@@ -66,6 +66,61 @@ def require_valid_app(f):
 def before_request():
     init_db()
 
+@app.route('/', methods=['GET'])
+def api_index():
+    endpoints = {
+        'message': 'ShopSync API - Available Endpoints',
+        'whatsapp_support': '+263788539918',
+        'endpoints': {
+            'Health': {
+                'GET /api/health': 'Check API health status'
+            },
+            'Shops': {
+                'POST /api/shops': 'Register a new shop',
+                'GET /api/shops/<shop_id>': 'Get shop details',
+                'PUT /api/shops/<shop_id>': 'Update shop details',
+                'POST /api/shops/<shop_id>/verify-pin': 'Verify shop PIN'
+            },
+            'Items': {
+                'GET /api/shops/<shop_id>/items': 'Get all items (optional ?category=)',
+                'POST /api/shops/<shop_id>/items': 'Create a new item',
+                'PUT /api/shops/<shop_id>/items/<item_id>': 'Update an item',
+                'DELETE /api/shops/<shop_id>/items/<item_id>': 'Delete an item',
+                'GET /api/shops/<shop_id>/categories': 'Get all categories'
+            },
+            'Sales': {
+                'GET /api/shops/<shop_id>/sales': 'Get sales (optional ?start_date=&end_date=)',
+                'POST /api/shops/<shop_id>/sales': 'Record a sale',
+                'GET /api/shops/<shop_id>/sales/report': 'Get sales report'
+            },
+            'Debts': {
+                'GET /api/shops/<shop_id>/debts': 'Get debts (optional ?include_cleared=true)',
+                'POST /api/shops/<shop_id>/debts': 'Create a debt',
+                'PUT /api/shops/<shop_id>/debts/<debt_id>': 'Update a debt',
+                'POST /api/shops/<shop_id>/debts/<debt_id>/clear': 'Clear a debt',
+                'DELETE /api/shops/<shop_id>/debts/<debt_id>': 'Delete a debt',
+                'GET /api/shops/<shop_id>/debts/summary': 'Get debts summary'
+            },
+            'Sync': {
+                'POST /api/shops/<shop_id>/sync': 'Sync all data',
+                'GET /api/shops/<shop_id>/sync/status': 'Get sync status'
+            },
+            'Product Keys': {
+                'POST /api/product-keys': 'Generate a new product key',
+                'GET /api/product-keys/available': 'Get available product keys',
+                'POST /api/shops/<shop_id>/product-keys/activate': 'Activate a product key'
+            },
+            'Devices': {
+                'GET /api/shops/<shop_id>/devices': 'Get all registered devices (max 3)',
+                'POST /api/shops/<shop_id>/devices': 'Register a new device',
+                'GET /api/shops/<shop_id>/devices/<app_id>/status': 'Get device license status',
+                'POST /api/shops/<shop_id>/devices/<app_id>/renew': 'Renew device license',
+                'GET /api/shops/<shop_id>/devices/<app_id>/license-info': 'Get license info with product key'
+            }
+        }
+    }
+    return jsonify(endpoints)
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok', 'message': 'ShopSync API is running'})
@@ -913,6 +968,54 @@ def renew_device_license(shop_id, app_id):
         'expires_at': expires_at,
         'status': 'active'
     })
+
+@app.route('/api/shops/<shop_id>/devices/<app_id>/license-info', methods=['GET'])
+def get_license_info(shop_id, app_id):
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, app_id, device_slot, status, product_key, activated_at, expires_at, last_seen 
+            FROM shop_devices WHERE app_id = ? AND shop_id = ?
+        ''', (app_id, shop_id))
+        device = cursor.fetchone()
+        
+        if not device:
+            return jsonify({'error': 'Device not found'}), 404
+        
+        current_time = get_timestamp()
+        device_dict = dict(device)
+        
+        product_key = device_dict.get('product_key')
+        if product_key:
+            parts = product_key.split('-')
+            if len(parts) == 4:
+                masked_key = f"****-****-****-{parts[3]}"
+            else:
+                masked_key = f"****-****-****-{product_key[-4:]}" if len(product_key) >= 4 else "****"
+        else:
+            masked_key = None
+        
+        expired = False
+        days_remaining = None
+        if device_dict['expires_at']:
+            if device_dict['expires_at'] < current_time:
+                expired = True
+                days_remaining = 0
+            else:
+                remaining_ms = device_dict['expires_at'] - current_time
+                days_remaining = int(remaining_ms / (1000 * 60 * 60 * 24))
+        
+        return jsonify({
+            'app_id': device_dict['app_id'],
+            'device_slot': device_dict['device_slot'],
+            'status': device_dict['status'],
+            'product_key_masked': masked_key,
+            'activated_at': device_dict['activated_at'],
+            'expires_at': device_dict['expires_at'],
+            'expired': expired,
+            'days_remaining': days_remaining,
+            'whatsapp_support': '+263788539918'
+        })
 
 if __name__ == '__main__':
     init_db()

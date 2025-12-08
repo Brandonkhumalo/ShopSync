@@ -37,6 +37,13 @@ public class SyncManager {
         this.executor = Executors.newSingleThreadExecutor();
         this.mainHandler = new Handler(Looper.getMainLooper());
     }
+    
+    public SyncManager(Context context, DatabaseHelper database) {
+        this.context = context;
+        this.db = database;
+        this.executor = Executors.newSingleThreadExecutor();
+        this.mainHandler = new Handler(Looper.getMainLooper());
+    }
 
     public boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager)
@@ -199,5 +206,91 @@ public class SyncManager {
         if (expiresAt == 0) return 0;
         long remaining = expiresAt - System.currentTimeMillis();
         return remaining > 0 ? remaining / (1000 * 60 * 60 * 24) : 0;
+    }
+    
+    public String fetchLicenseInfo(String shopId, String appId) {
+        if (BACKEND_URL.isEmpty()) {
+            return null;
+        }
+        
+        if (!isNetworkAvailable()) {
+            return null;
+        }
+        
+        try {
+            URL url = new URL(BACKEND_URL + "/api/shops/" + shopId + "/devices/" + appId + "/license-info");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-App-Id", appId);
+            
+            int responseCode = conn.getResponseCode();
+            
+            if (responseCode == 200) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
+                reader.close();
+                conn.disconnect();
+                return response.toString();
+            }
+            
+            conn.disconnect();
+            return null;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    public String renewLicense(String shopId, String appId, String productKey) {
+        if (BACKEND_URL.isEmpty()) {
+            return "{\"error\": \"Backend not configured\"}";
+        }
+        
+        if (!isNetworkAvailable()) {
+            return "{\"error\": \"No network connection\"}";
+        }
+        
+        try {
+            URL url = new URL(BACKEND_URL + "/api/shops/" + shopId + "/devices/" + appId + "/renew");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-App-Id", appId);
+            conn.setDoOutput(true);
+            
+            JSONObject requestBody = new JSONObject();
+            requestBody.put("product_key", productKey);
+            
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(requestBody.toString().getBytes("UTF-8"));
+            }
+            
+            int responseCode = conn.getResponseCode();
+            BufferedReader reader;
+            
+            if (responseCode == 200) {
+                reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            } else {
+                reader = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+            }
+            
+            StringBuilder response = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+            conn.disconnect();
+            
+            return response.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "{\"error\": \"" + e.getMessage() + "\"}";
+        }
     }
 }
