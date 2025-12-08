@@ -2,6 +2,7 @@ package com.tishanyq.shopsync.Database;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
@@ -13,7 +14,17 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "shopsync.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
+    
+    private static final String PREFS_NAME = "ShopSyncPrefs";
+    private static final String PREF_APP_ID = "app_id";
+    private static final String PREF_SHOP_ID = "shop_id";
+    private static final String PREF_DEVICE_SLOT = "device_slot";
+    private static final String PREF_EXPIRES_AT = "expires_at";
+    private static final String PREF_ACTIVATED_AT = "activated_at";
+    private static final String PREF_IS_ACTIVATED = "is_activated";
+    
+    private Context context;
 
     // Tables
     private static final String TABLE_SHOP = "shop";
@@ -25,6 +36,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        this.context = context;
     }
 
     @Override
@@ -110,6 +122,9 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) {
             db.execSQL("ALTER TABLE " + TABLE_SHOP + " ADD COLUMN pin TEXT");
+        }
+        if (oldVersion < 3) {
+            db.execSQL("ALTER TABLE " + TABLE_SHOP + " ADD COLUMN app_id TEXT");
         }
     }
 
@@ -515,5 +530,73 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         debt.setClearedAt(cursor.getLong(cursor.getColumnIndexOrThrow("cleared_at")));
         debt.setSynced(cursor.getInt(cursor.getColumnIndexOrThrow("synced")) == 1);
         return debt;
+    }
+    
+    public void saveAppAuthorization(String appId, String shopId, int deviceSlot, long activatedAt, long expiresAt) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(PREF_APP_ID, appId);
+        editor.putString(PREF_SHOP_ID, shopId);
+        editor.putInt(PREF_DEVICE_SLOT, deviceSlot);
+        editor.putLong(PREF_ACTIVATED_AT, activatedAt);
+        editor.putLong(PREF_EXPIRES_AT, expiresAt);
+        editor.putBoolean(PREF_IS_ACTIVATED, true);
+        editor.apply();
+        
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("id", shopId);
+        values.put("app_id", appId);
+        db.update(TABLE_SHOP, values, null, null);
+    }
+    
+    public void savePendingRegistration(String appId, String shopId, int deviceSlot) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(PREF_APP_ID, appId);
+        editor.putString(PREF_SHOP_ID, shopId);
+        editor.putInt(PREF_DEVICE_SLOT, deviceSlot);
+        editor.putBoolean(PREF_IS_ACTIVATED, false);
+        editor.apply();
+    }
+    
+    public String getAppId() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(PREF_APP_ID, null);
+    }
+    
+    public String getStoredShopId() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(PREF_SHOP_ID, null);
+    }
+    
+    public int getDeviceSlot() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getInt(PREF_DEVICE_SLOT, 0);
+    }
+    
+    public long getExpiresAt() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getLong(PREF_EXPIRES_AT, 0);
+    }
+    
+    public boolean isAppActivated() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getBoolean(PREF_IS_ACTIVATED, false);
+    }
+    
+    public boolean isLicenseExpired() {
+        long expiresAt = getExpiresAt();
+        if (expiresAt == 0) return true;
+        return System.currentTimeMillis() > expiresAt;
+    }
+    
+    public void clearAuthorization() {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.remove(PREF_EXPIRES_AT);
+        editor.remove(PREF_ACTIVATED_AT);
+        editor.putBoolean(PREF_IS_ACTIVATED, false);
+        editor.apply();
     }
 }

@@ -23,8 +23,14 @@ public class SplashActivity extends AppCompatActivity {
                 intent = new Intent(SplashActivity.this, RegisterActivity.class);
             } else if (shop.getPin() == null || shop.getPin().isEmpty()) {
                 intent = new Intent(SplashActivity.this, SetupPinActivity.class);
+            } else if (!db.isAppActivated()) {
+                intent = new Intent(SplashActivity.this, RegisterActivity.class);
+                intent.putExtra("needs_activation", true);
             } else {
                 intent = new Intent(SplashActivity.this, PinLoginActivity.class);
+                if (db.isLicenseExpired()) {
+                    intent.putExtra("license_expired", true);
+                }
             }
             startActivity(intent);
             finish();

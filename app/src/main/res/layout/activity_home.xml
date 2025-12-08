@@ -28,10 +28,19 @@
             android:id="@+id/tv_sync_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="✓ Synced 0 days ago"
+            android:text="Synced 0 days ago"
             android:textSize="14sp"
             android:textColor="#E0F2FE"
             android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tv_license_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="License: Active"
+            android:textSize="12sp"
+            android:textColor="#E0F2FE"
+            android:layout_marginTop="2dp" />
 
     </LinearLayout>
 

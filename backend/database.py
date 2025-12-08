@@ -110,7 +110,40 @@ def init_db():
             )
         ''')
         
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS product_keys (
+                id TEXT PRIMARY KEY,
+                product_key TEXT UNIQUE NOT NULL,
+                status TEXT DEFAULT 'unused',
+                created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+                activated_at INTEGER,
+                expires_at INTEGER,
+                shop_id TEXT,
+                app_id TEXT,
+                FOREIGN KEY (shop_id) REFERENCES shops(id)
+            )
+        ''')
+        
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS shop_devices (
+                id TEXT PRIMARY KEY,
+                app_id TEXT UNIQUE NOT NULL,
+                shop_id TEXT NOT NULL,
+                device_slot INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                product_key TEXT,
+                registered_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+                activated_at INTEGER,
+                expires_at INTEGER,
+                last_seen INTEGER,
+                FOREIGN KEY (shop_id) REFERENCES shops(id)
+            )
+        ''')
+        
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_items_shop ON items(shop_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_sales_shop ON sales(shop_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_debts_shop ON debts(shop_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_product_keys_status ON product_keys(status)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_shop_devices_shop ON shop_devices(shop_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_shop_devices_app ON shop_devices(app_id)')

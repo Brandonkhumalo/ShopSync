@@ -1,6 +1,10 @@
 import os
 import uuid
 import time
+import secrets
+import string
+from datetime import datetime, timedelta
+from functools import wraps
 from flask import Flask, request, jsonify
 from database import init_db, get_db_context
 
@@ -13,6 +17,50 @@ def generate_id(prefix=''):
 
 def get_timestamp():
     return int(time.time() * 1000)
+
+def generate_product_key():
+    chars = string.ascii_uppercase + string.digits
+    parts = [''.join(secrets.choice(chars) for _ in range(4)) for _ in range(4)]
+    return '-'.join(parts)
+
+def calculate_expiry_date(activated_at_ms):
+    activated_date = datetime.fromtimestamp(activated_at_ms / 1000)
+    expiry_date = activated_date + timedelta(days=30)
+    return int(expiry_date.timestamp() * 1000)
+
+def require_valid_app(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        app_id = request.headers.get('X-App-Id') or request.json.get('app_id') if request.json else None
+        shop_id = kwargs.get('shop_id')
+        
+        if not app_id:
+            return jsonify({'error': 'App ID is required'}), 401
+        
+        with get_db_context() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT status, expires_at FROM shop_devices 
+                WHERE app_id = ? AND shop_id = ?
+            ''', (app_id, shop_id))
+            device = cursor.fetchone()
+            
+            if not device:
+                return jsonify({'error': 'Device not registered'}), 403
+            
+            if device['status'] != 'active':
+                return jsonify({'error': 'Device not activated', 'status': device['status']}), 403
+            
+            current_time = get_timestamp()
+            if device['expires_at'] and device['expires_at'] < current_time:
+                return jsonify({'error': 'License expired', 'expired': True}), 403
+            
+            cursor.execute('''
+                UPDATE shop_devices SET last_seen = ? WHERE app_id = ?
+            ''', (current_time, app_id))
+        
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.before_request
 def before_request():
@@ -34,6 +82,9 @@ def register_shop():
             return jsonify({'error': f'{field} is required'}), 400
     
     shop_id = generate_id('SHOP_')
+    app_id = generate_id('APP_')
+    device_id = generate_id('DEV_')
+    current_time = get_timestamp()
     
     with get_db_context() as conn:
         cursor = conn.cursor()
@@ -50,8 +101,19 @@ def register_shop():
             data.get('address', ''),
             data.get('pin')
         ))
+        
+        cursor.execute('''
+            INSERT INTO shop_devices (id, app_id, shop_id, device_slot, status, registered_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (device_id, app_id, shop_id, 1, 'pending', current_time))
     
-    return jsonify({'id': shop_id, 'message': 'Shop registered successfully'}), 201
+    return jsonify({
+        'id': shop_id,
+        'shop_id': shop_id,
+        'app_id': app_id,
+        'device_slot': 1,
+        'message': 'Shop registered successfully. Please activate with a product key.'
+    }), 201
 
 @app.route('/api/shops/<shop_id>/verify-pin', methods=['POST'])
 def verify_pin(shop_id):
@@ -562,6 +624,295 @@ def get_sync_status(shop_id):
             })
         else:
             return jsonify({'last_sync': None, 'success': None})
+
+@app.route('/api/product-keys', methods=['POST'])
+def create_product_key():
+    key_id = generate_id('KEY_')
+    product_key = generate_product_key()
+    current_time = get_timestamp()
+    
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO product_keys (id, product_key, status, created_at)
+            VALUES (?, ?, ?, ?)
+        ''', (key_id, product_key, 'unused', current_time))
+    
+    return jsonify({
+        'id': key_id,
+        'product_key': product_key,
+        'status': 'unused',
+        'created_at': current_time,
+        'message': 'Product key created successfully'
+    }), 201
+
+@app.route('/api/product-keys/available', methods=['GET'])
+def get_available_product_keys():
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, product_key, created_at FROM product_keys 
+            WHERE status = 'unused' ORDER BY created_at DESC
+        ''')
+        keys = [dict(row) for row in cursor.fetchall()]
+        return jsonify({
+            'count': len(keys),
+            'keys': keys
+        })
+
+@app.route('/api/shops/<shop_id>/product-keys/activate', methods=['POST'])
+def activate_product_key(shop_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    product_key = data.get('product_key')
+    app_id = data.get('app_id')
+    
+    if not product_key:
+        return jsonify({'error': 'Product key is required'}), 400
+    if not app_id:
+        return jsonify({'error': 'App ID is required'}), 400
+    
+    current_time = get_timestamp()
+    
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Shop not found'}), 404
+        
+        cursor.execute('''
+            SELECT id, app_id, device_slot, status, expires_at FROM shop_devices 
+            WHERE app_id = ? AND shop_id = ?
+        ''', (app_id, shop_id))
+        device = cursor.fetchone()
+        
+        if not device:
+            return jsonify({'error': 'Device not registered for this shop'}), 404
+        
+        cursor.execute('''
+            SELECT id, status FROM product_keys WHERE product_key = ?
+        ''', (product_key,))
+        key_record = cursor.fetchone()
+        
+        if not key_record:
+            return jsonify({'error': 'Invalid product key'}), 400
+        
+        if key_record['status'] == 'used':
+            return jsonify({'error': 'Product key has already been used'}), 400
+        
+        expires_at = calculate_expiry_date(current_time)
+        
+        cursor.execute('''
+            UPDATE product_keys SET 
+                status = 'used', 
+                activated_at = ?, 
+                expires_at = ?, 
+                shop_id = ?, 
+                app_id = ?
+            WHERE id = ?
+        ''', (current_time, expires_at, shop_id, app_id, key_record['id']))
+        
+        cursor.execute('''
+            UPDATE shop_devices SET 
+                status = 'active', 
+                product_key = ?, 
+                activated_at = ?, 
+                expires_at = ?,
+                last_seen = ?
+            WHERE app_id = ? AND shop_id = ?
+        ''', (product_key, current_time, expires_at, current_time, app_id, shop_id))
+    
+    return jsonify({
+        'message': 'Product key activated successfully',
+        'app_id': app_id,
+        'shop_id': shop_id,
+        'device_slot': device['device_slot'],
+        'activated_at': current_time,
+        'expires_at': expires_at,
+        'status': 'active'
+    })
+
+@app.route('/api/shops/<shop_id>/devices', methods=['GET'])
+def get_shop_devices(shop_id):
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, app_id, device_slot, status, registered_at, activated_at, expires_at, last_seen 
+            FROM shop_devices WHERE shop_id = ? ORDER BY device_slot
+        ''', (shop_id,))
+        devices = [dict(row) for row in cursor.fetchall()]
+        
+        current_time = get_timestamp()
+        for device in devices:
+            if device['expires_at'] and device['expires_at'] < current_time:
+                device['expired'] = True
+            else:
+                device['expired'] = False
+        
+        return jsonify({
+            'count': len(devices),
+            'max_devices': 3,
+            'devices': devices
+        })
+
+@app.route('/api/shops/<shop_id>/devices', methods=['POST'])
+def register_new_device(shop_id):
+    requesting_app_id = request.headers.get('X-App-Id')
+    if request.json:
+        requesting_app_id = requesting_app_id or request.json.get('requesting_app_id')
+    
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Shop not found'}), 404
+        
+        if requesting_app_id:
+            cursor.execute('''
+                SELECT status, expires_at FROM shop_devices 
+                WHERE app_id = ? AND shop_id = ? AND status = 'active'
+            ''', (requesting_app_id, shop_id))
+            auth_device = cursor.fetchone()
+            
+            if not auth_device:
+                return jsonify({'error': 'Authentication required. Please use an active device to register new devices.'}), 403
+            
+            current_time = get_timestamp()
+            if auth_device['expires_at'] and auth_device['expires_at'] < current_time:
+                return jsonify({'error': 'Your license has expired. Please renew before registering new devices.'}), 403
+        else:
+            cursor.execute('''
+                SELECT COUNT(*) as count FROM shop_devices WHERE shop_id = ?
+            ''', (shop_id,))
+            existing_count = cursor.fetchone()['count']
+            if existing_count > 0:
+                return jsonify({'error': 'Authentication required. Please provide X-App-Id header from an active device.'}), 401
+        
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM shop_devices WHERE shop_id = ?
+        ''', (shop_id,))
+        device_count = cursor.fetchone()['count']
+        
+        if device_count >= 3:
+            return jsonify({'error': 'Maximum number of devices (3) reached for this shop'}), 400
+        
+        cursor.execute('''
+            SELECT MAX(device_slot) as max_slot FROM shop_devices WHERE shop_id = ?
+        ''', (shop_id,))
+        result = cursor.fetchone()
+        next_slot = (result['max_slot'] or 0) + 1
+        
+        app_id = generate_id('APP_')
+        device_id = generate_id('DEV_')
+        current_time = get_timestamp()
+        
+        cursor.execute('''
+            INSERT INTO shop_devices (id, app_id, shop_id, device_slot, status, registered_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (device_id, app_id, shop_id, next_slot, 'pending', current_time))
+    
+    return jsonify({
+        'app_id': app_id,
+        'shop_id': shop_id,
+        'device_slot': next_slot,
+        'status': 'pending',
+        'message': f'New device registered as App {next_slot}. Please activate with a product key.'
+    }), 201
+
+@app.route('/api/shops/<shop_id>/devices/<app_id>/status', methods=['GET'])
+def get_device_status(shop_id, app_id):
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, app_id, device_slot, status, activated_at, expires_at, last_seen 
+            FROM shop_devices WHERE app_id = ? AND shop_id = ?
+        ''', (app_id, shop_id))
+        device = cursor.fetchone()
+        
+        if not device:
+            return jsonify({'error': 'Device not found'}), 404
+        
+        current_time = get_timestamp()
+        device_dict = dict(device)
+        
+        if device_dict['expires_at'] and device_dict['expires_at'] < current_time:
+            device_dict['expired'] = True
+            device_dict['needs_renewal'] = True
+        else:
+            device_dict['expired'] = False
+            device_dict['needs_renewal'] = False
+        
+        return jsonify(device_dict)
+
+@app.route('/api/shops/<shop_id>/devices/<app_id>/renew', methods=['POST'])
+def renew_device_license(shop_id, app_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    product_key = data.get('product_key')
+    if not product_key:
+        return jsonify({'error': 'Product key is required'}), 400
+    
+    current_time = get_timestamp()
+    
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, device_slot, status FROM shop_devices WHERE app_id = ? AND shop_id = ?
+        ''', (app_id, shop_id))
+        device = cursor.fetchone()
+        
+        if not device:
+            return jsonify({'error': 'Device not found'}), 404
+        
+        cursor.execute('''
+            SELECT id, status FROM product_keys WHERE product_key = ?
+        ''', (product_key,))
+        key_record = cursor.fetchone()
+        
+        if not key_record:
+            return jsonify({'error': 'Invalid product key'}), 400
+        
+        if key_record['status'] == 'used':
+            return jsonify({'error': 'Product key has already been used'}), 400
+        
+        expires_at = calculate_expiry_date(current_time)
+        
+        cursor.execute('''
+            UPDATE product_keys SET 
+                status = 'used', 
+                activated_at = ?, 
+                expires_at = ?, 
+                shop_id = ?, 
+                app_id = ?
+            WHERE id = ?
+        ''', (current_time, expires_at, shop_id, app_id, key_record['id']))
+        
+        cursor.execute('''
+            UPDATE shop_devices SET 
+                status = 'active', 
+                product_key = ?, 
+                activated_at = ?, 
+                expires_at = ?,
+                last_seen = ?
+            WHERE app_id = ? AND shop_id = ?
+        ''', (product_key, current_time, expires_at, current_time, app_id, shop_id))
+    
+    return jsonify({
+        'message': 'License renewed successfully',
+        'app_id': app_id,
+        'shop_id': shop_id,
+        'device_slot': device['device_slot'],
+        'activated_at': current_time,
+        'expires_at': expires_at,
+        'status': 'active'
+    })
 
 if __name__ == '__main__':
     init_db()
