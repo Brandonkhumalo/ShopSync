@@ -127,6 +127,10 @@ def create_item(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
+        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Shop not found'}), 404
+        
         cursor.execute('''
             INSERT INTO items (id, local_id, shop_id, name, category, price_usd, price_zwg, quantity, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -232,6 +236,10 @@ def create_sale(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
+        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Shop not found'}), 404
+        
         cursor.execute('''
             INSERT INTO sales (id, local_id, shop_id, item_id, item_name, quantity, total_usd, total_zwg,
                              payment_method, debt_used_usd, debt_used_zwg, debt_id, sale_date)
@@ -333,6 +341,10 @@ def create_debt(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
+        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Shop not found'}), 404
+        
         cursor.execute('''
             INSERT INTO debts (id, local_id, shop_id, customer_name, amount_usd, amount_zwg, type, notes, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

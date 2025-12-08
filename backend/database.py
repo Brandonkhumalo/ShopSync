@@ -7,6 +7,7 @@ DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'shopsync.db')
 def get_db():
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON')
     return conn
 
 @contextmanager
