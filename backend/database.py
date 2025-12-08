@@ -35,10 +35,16 @@ def init_db():
                 phone_number TEXT NOT NULL,
                 services TEXT,
                 address TEXT,
+                pin TEXT,
                 created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
                 updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
             )
         ''')
+        
+        cursor.execute("PRAGMA table_info(shops)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'pin' not in columns:
+            cursor.execute("ALTER TABLE shops ADD COLUMN pin TEXT")
         
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS items (

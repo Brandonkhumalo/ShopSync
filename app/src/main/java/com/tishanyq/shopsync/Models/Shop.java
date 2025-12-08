@@ -8,6 +8,7 @@ public class Shop {
     private String phoneNumber;
     private String services;
     private String address;
+    private String pin;
     private boolean synced;
 
     public Shop() {}
@@ -23,7 +24,18 @@ public class Shop {
         this.synced = false;
     }
 
-    // Getters and Setters
+    public Shop(String name, String ownerName, String ownerSurname,
+                String phoneNumber, String services, String address, String pin) {
+        this.name = name;
+        this.ownerName = ownerName;
+        this.ownerSurname = ownerSurname;
+        this.phoneNumber = phoneNumber;
+        this.services = services;
+        this.address = address;
+        this.pin = pin;
+        this.synced = false;
+    }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getName() { return name; }
@@ -38,6 +50,8 @@ public class Shop {
     public void setServices(String services) { this.services = services; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+    public String getPin() { return pin; }
+    public void setPin(String pin) { this.pin = pin; }
     public boolean isSynced() { return synced; }
     public void setSynced(boolean synced) { this.synced = synced; }
 }

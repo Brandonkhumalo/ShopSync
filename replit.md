@@ -57,12 +57,28 @@ app/                # Android application (Java)
 ## Running the Backend
 The backend runs automatically via the configured workflow on port 5000.
 
+### Authentication
+- `POST /api/shops/<shop_id>/verify-pin` - Verify shop PIN for login
+
 ## Database Schema
-- **shops**: Store information (id, name, owner details, address)
+- **shops**: Store information (id, name, owner details, address, pin)
 - **items**: Inventory items with dual currency pricing (USD/ZWG)
 - **sales**: Sales transactions with payment methods
 - **debts**: Customer debts tracking
 - **sync_logs**: Sync operation history
 
+## Android App Authentication Flow
+1. **New Users**: SplashActivity -> RegisterActivity (creates PIN) -> HomeActivity
+2. **Existing Users with PIN**: SplashActivity -> PinLoginActivity -> HomeActivity
+3. **Existing Users without PIN**: SplashActivity -> SetupPinActivity -> HomeActivity
+
+The PIN is stored locally for offline login and synced to the backend.
+
 ## Recent Changes
+- Added PIN authentication for login (Dec 2024)
+  - PIN field added to Shop model and database
+  - PinLoginActivity for existing users
+  - SetupPinActivity for users upgrading from old version
+  - RegisterActivity updated with PIN creation
+  - Backend verify-pin endpoint added
 - Initial backend creation (Dec 2024)

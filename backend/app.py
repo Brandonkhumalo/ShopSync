@@ -38,8 +38,8 @@ def register_shop():
     with get_db_context() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO shops (id, name, owner_name, owner_surname, phone_number, services, address)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO shops (id, name, owner_name, owner_surname, phone_number, services, address, pin)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             shop_id,
             data.get('name'),
@@ -47,10 +47,30 @@ def register_shop():
             data.get('owner_surname'),
             data.get('phone_number'),
             data.get('services', ''),
-            data.get('address', '')
+            data.get('address', ''),
+            data.get('pin')
         ))
     
     return jsonify({'id': shop_id, 'message': 'Shop registered successfully'}), 201
+
+@app.route('/api/shops/<shop_id>/verify-pin', methods=['POST'])
+def verify_pin(shop_id):
+    data = request.get_json()
+    if not data or not data.get('pin'):
+        return jsonify({'error': 'PIN is required'}), 400
+    
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT pin FROM shops WHERE id = ?', (shop_id,))
+        shop = cursor.fetchone()
+        
+        if not shop:
+            return jsonify({'error': 'Shop not found'}), 404
+        
+        if shop['pin'] == data.get('pin'):
+            return jsonify({'valid': True, 'message': 'PIN verified successfully'})
+        else:
+            return jsonify({'valid': False, 'message': 'Invalid PIN'}), 401
 
 @app.route('/api/shops/<shop_id>', methods=['GET'])
 def get_shop(shop_id):

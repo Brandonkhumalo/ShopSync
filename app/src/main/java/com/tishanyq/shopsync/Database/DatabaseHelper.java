@@ -13,7 +13,7 @@ import java.util.List;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "shopsync.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2;
 
     // Tables
     private static final String TABLE_SHOP = "shop";
@@ -29,7 +29,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        // Shop table
         db.execSQL("CREATE TABLE " + TABLE_SHOP + " (" +
                 "id TEXT PRIMARY KEY, " +
                 "name TEXT, " +
@@ -38,6 +37,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "phone_number TEXT, " +
                 "services TEXT, " +
                 "address TEXT, " +
+                "pin TEXT, " +
                 "synced INTEGER DEFAULT 0)");
 
         // Items table
@@ -108,16 +108,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_SHOP);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_ITEMS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_SALES);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_UNSYNCED);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_ANALYTICS);
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_SYNC_LOG);
-        onCreate(db);
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE " + TABLE_SHOP + " ADD COLUMN pin TEXT");
+        }
     }
 
-    // Shop operations
     public long saveShop(Shop shop) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -127,6 +122,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put("phone_number", shop.getPhoneNumber());
         values.put("services", shop.getServices());
         values.put("address", shop.getAddress());
+        values.put("pin", shop.getPin());
         values.put("synced", shop.isSynced() ? 1 : 0);
 
         long result = db.insert(TABLE_SHOP, null, values);
@@ -149,10 +145,30 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             shop.setPhoneNumber(cursor.getString(cursor.getColumnIndexOrThrow("phone_number")));
             shop.setServices(cursor.getString(cursor.getColumnIndexOrThrow("services")));
             shop.setAddress(cursor.getString(cursor.getColumnIndexOrThrow("address")));
+            shop.setPin(cursor.getString(cursor.getColumnIndexOrThrow("pin")));
             shop.setSynced(cursor.getInt(cursor.getColumnIndexOrThrow("synced")) == 1);
         }
         cursor.close();
         return shop;
+    }
+
+    public boolean verifyPin(String enteredPin) {
+        Shop shop = getShop();
+        if (shop != null && shop.getPin() != null) {
+            return shop.getPin().equals(enteredPin);
+        }
+        return false;
+    }
+
+    public boolean updateShopPin(String pin) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put("pin", pin);
+        int rowsAffected = db.update(TABLE_SHOP, values, null, null);
+        if (rowsAffected > 0) {
+            addUnsyncedRecord(TABLE_SHOP, "shop", "UPDATE");
+        }
+        return rowsAffected > 0;
     }
 
     public void updateShopId(String shopId) {

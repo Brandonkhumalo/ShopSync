@@ -21,8 +21,10 @@ public class SplashActivity extends AppCompatActivity {
             Intent intent;
             if (shop == null) {
                 intent = new Intent(SplashActivity.this, RegisterActivity.class);
+            } else if (shop.getPin() == null || shop.getPin().isEmpty()) {
+                intent = new Intent(SplashActivity.this, SetupPinActivity.class);
             } else {
-                intent = new Intent(SplashActivity.this, HomeActivity.class);
+                intent = new Intent(SplashActivity.this, PinLoginActivity.class);
             }
             startActivity(intent);
             finish();

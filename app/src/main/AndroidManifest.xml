@@ -42,6 +42,12 @@
             android:name=".Activities.HomeActivity"
             android:exported="false" />
         <activity
+            android:name=".Activities.PinLoginActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Activities.SetupPinActivity"
+            android:exported="false" />
+        <activity
             android:name=".Activities.RegisterActivity"
             android:exported="false" />
         <activity

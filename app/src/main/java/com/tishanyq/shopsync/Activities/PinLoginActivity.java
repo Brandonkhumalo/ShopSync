@@ -5,40 +5,44 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
-import android.widget.*;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.tishanyq.shopsync.Database.DatabaseHelper;
 import com.tishanyq.shopsync.Models.Shop;
-import com.google.android.material.textfield.TextInputEditText;
 import com.tishanyq.shopsync.R;
 
-public class RegisterActivity extends AppCompatActivity {
-    private TextInputEditText etName, etSurname, etPhone, etShopName, etServices, etAddress;
+public class PinLoginActivity extends AppCompatActivity {
     private EditText etPin1, etPin2, etPin3, etPin4;
-    private Button btnRegister;
+    private Button btnLogin;
+    private TextView tvShopName, tvError;
     private DatabaseHelper db;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_register);
+        setContentView(R.layout.activity_pin_login);
 
         db = new DatabaseHelper(this);
 
-        etName = findViewById(R.id.et_name);
-        etSurname = findViewById(R.id.et_surname);
-        etPhone = findViewById(R.id.et_phone);
-        etShopName = findViewById(R.id.et_shop_name);
-        etServices = findViewById(R.id.et_services);
-        etAddress = findViewById(R.id.et_address);
         etPin1 = findViewById(R.id.et_pin_1);
         etPin2 = findViewById(R.id.et_pin_2);
         etPin3 = findViewById(R.id.et_pin_3);
         etPin4 = findViewById(R.id.et_pin_4);
-        btnRegister = findViewById(R.id.btn_register);
+        btnLogin = findViewById(R.id.btn_login);
+        tvShopName = findViewById(R.id.tv_shop_name);
+        tvError = findViewById(R.id.tv_error);
+
+        Shop shop = db.getShop();
+        if (shop != null) {
+            tvShopName.setText(shop.getName());
+        }
 
         setupPinInputs();
-        btnRegister.setOnClickListener(v -> registerShop());
+
+        btnLogin.setOnClickListener(v -> verifyPin());
     }
 
     private void setupPinInputs() {
@@ -48,39 +52,35 @@ public class RegisterActivity extends AppCompatActivity {
         etPin4.addTextChangedListener(new PinTextWatcher(etPin4, etPin3, null));
     }
 
-    private void registerShop() {
-        String name = etName.getText().toString().trim();
-        String surname = etSurname.getText().toString().trim();
-        String phone = etPhone.getText().toString().trim();
-        String shopName = etShopName.getText().toString().trim();
-        String services = etServices.getText().toString().trim();
-        String address = etAddress.getText().toString().trim();
+    private void verifyPin() {
         String pin = etPin1.getText().toString() +
                      etPin2.getText().toString() +
                      etPin3.getText().toString() +
                      etPin4.getText().toString();
 
-        if (name.isEmpty() || surname.isEmpty() || phone.isEmpty() ||
-                shopName.isEmpty() || services.isEmpty() || address.isEmpty()) {
-            Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         if (pin.length() != 4) {
-            Toast.makeText(this, "Please enter a 4-digit PIN", Toast.LENGTH_SHORT).show();
+            tvError.setText("Please enter your 4-digit PIN");
+            tvError.setVisibility(View.VISIBLE);
             return;
         }
 
-        Shop shop = new Shop(shopName, name, surname, phone, services, address, pin);
-        long result = db.saveShop(shop);
-
-        if (result != -1) {
-            Toast.makeText(this, "Shop registered! Waiting for sync...", Toast.LENGTH_LONG).show();
+        if (db.verifyPin(pin)) {
+            tvError.setVisibility(View.GONE);
             startActivity(new Intent(this, HomeActivity.class));
             finish();
         } else {
-            Toast.makeText(this, "Registration failed", Toast.LENGTH_SHORT).show();
+            tvError.setText("Incorrect PIN. Please try again.");
+            tvError.setVisibility(View.VISIBLE);
+            clearPinInputs();
         }
+    }
+
+    private void clearPinInputs() {
+        etPin1.setText("");
+        etPin2.setText("");
+        etPin3.setText("");
+        etPin4.setText("");
+        etPin1.requestFocus();
     }
 
     private class PinTextWatcher implements TextWatcher {
@@ -107,6 +107,7 @@ public class RegisterActivity extends AppCompatActivity {
             } else if (s.length() == 0 && prev != null) {
                 prev.requestFocus();
             }
+            tvError.setVisibility(View.GONE);
         }
     }
 }
