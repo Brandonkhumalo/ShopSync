@@ -6,6 +6,7 @@ from database import init_db, get_db_context
 
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
+app.url_map.strict_slashes = False
 
 def generate_id(prefix=''):
     return f"{prefix}{uuid.uuid4().hex[:12]}"
