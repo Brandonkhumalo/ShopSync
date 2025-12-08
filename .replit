@@ -45,4 +45,3 @@ externalPort = 3000
 [deployment]
 deploymentTarget = "autoscale"
 run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
-build = ["bash", "-c", "cd frontend && npm install && npm run build"]
