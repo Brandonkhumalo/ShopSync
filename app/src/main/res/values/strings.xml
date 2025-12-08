@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ShopSync</string>
+    <string name="welcome_message">Welcome to FrostSync POS</string>
+    <string name="offline_first">Offline First • Always Ready</string>
+</resources>

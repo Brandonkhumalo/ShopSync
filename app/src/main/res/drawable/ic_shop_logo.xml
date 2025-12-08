@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Ice cube base -->
+    <path
+        android:fillColor="#E0F2FE"
+        android:pathData="M30,45 L60,30 L90,45 L90,75 L60,90 L30,75 Z"/>
+
+    <!-- Ice cube highlights -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.7"
+        android:pathData="M30,45 L60,30 L60,60 L30,75 Z"/>
+
+    <!-- Ice cube shadows -->
+    <path
+        android:fillColor="#3B82F6"
+        android:fillAlpha="0.3"
+        android:pathData="M60,60 L90,45 L90,75 L60,90 Z"/>
+
+    <!-- Front face -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.5"
+        android:pathData="M30,75 L60,90 L60,60 L30,45 Z"/>
+
+    <!-- Frost lines (texture) -->
+    <path
+        android:strokeColor="#3B82F6"
+        android:strokeWidth="1.5"
+        android:pathData="M40,52 L50,47
+                         M70,52 L80,47
+                         M45,68 L55,63
+                         M65,68 L75,63"
+        android:strokeLineCap="round"/>
+
+    <!-- POS symbol -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M55,55 L55,65 M50,60 L60,60"
+        android:strokeWidth="3"
+        android:strokeColor="#3B82F6"
+        android:strokeLineCap="round"/>
+</vector>
