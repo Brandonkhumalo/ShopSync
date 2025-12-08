@@ -8,6 +8,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
@@ -34,6 +35,7 @@ public class ProfileActivity extends AppCompatActivity {
     private EditText etNewProductKey;
     private MaterialButton btnActivateKey, btnWhatsapp;
     private MaterialCardView cardRenewLicense, cardWhatsappSupport;
+    private ImageView btnSettings;
     private DatabaseHelper db;
     private ExecutorService executor;
     private Handler mainHandler;
@@ -71,6 +73,7 @@ public class ProfileActivity extends AppCompatActivity {
         btnWhatsapp = findViewById(R.id.btn_whatsapp);
         cardRenewLicense = findViewById(R.id.card_renew_license);
         cardWhatsappSupport = findViewById(R.id.card_whatsapp_support);
+        btnSettings = findViewById(R.id.btn_settings);
     }
 
     private void loadProfile() {
@@ -193,6 +196,11 @@ public class ProfileActivity extends AppCompatActivity {
         btnWhatsapp.setOnClickListener(v -> openWhatsApp());
         
         cardWhatsappSupport.setOnClickListener(v -> openWhatsApp());
+        
+        btnSettings.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, SettingsActivity.class);
+            startActivity(intent);
+        });
     }
 
     private void activateProductKey() {

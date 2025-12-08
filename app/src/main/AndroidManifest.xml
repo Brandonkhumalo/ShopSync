@@ -18,6 +18,12 @@
         android:theme="@style/Theme.ShopSync"
         tools:targetApi="31">
         <activity
+            android:name=".Activities.AppInfoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Activities.SettingsActivity"
+            android:exported="false" />
+        <activity
             android:name=".Activities.Debts"
             android:exported="false" />
         <activity
