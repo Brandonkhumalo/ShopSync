@@ -16,10 +16,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Backend API"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "Backend API"
+name = "Start application"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -33,6 +33,10 @@ outputType = "webview"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 36771
+externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
