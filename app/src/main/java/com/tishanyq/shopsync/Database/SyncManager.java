@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 public class SyncManager {
     private Context context;
     private DatabaseHelper db;
-    private static final String BACKEND_URL = "http://192.168.1.13:5000";
+    private static final String BACKEND_URL = "https://shopsync-qx6o.onrender.com"; //"http://192.168.1.13:5000";
     private ExecutorService executor;
     private Handler mainHandler;
 
