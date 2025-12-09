@@ -1,2 +1,7 @@
 flask
 gunicorn
+PyJWT
+flask-cors
+Werkzeug>=2.3
+mysqlclient>=2.1
+bcrypt>=4.0
