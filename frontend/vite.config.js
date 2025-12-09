@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/admin/',
+  base: './',  // relative paths for Netlify
   server: {
     proxy: {
       '/api': {
@@ -13,7 +13,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: 'build', // so Netlify can use frontend/build
     emptyOutDir: true
   }
 })
