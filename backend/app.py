@@ -9,7 +9,6 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.security import check_password_hash
 from database import init_db, get_db_context
-from flask_cors import CORS
 
 SECRET_KEY = os.environ.get('SESSION_SECRET')
 if not SECRET_KEY:
@@ -19,7 +18,6 @@ if not SECRET_KEY:
 app = Flask(__name__)
 app.config['JSON_SORT_KEYS'] = False
 app.url_map.strict_slashes = False
-CORS(app, origins=["https://shopsynczim.netlify.app/"])
 
 def generate_id(prefix=''):
     return f"{prefix}{uuid.uuid4().hex[:12]}"
