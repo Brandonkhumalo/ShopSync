@@ -9,6 +9,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.security import check_password_hash
 from database import init_db, get_db_context
+from flask_cors import CORS
 
 SECRET_KEY = os.environ.get('SESSION_SECRET')
 if not SECRET_KEY:
@@ -16,8 +17,19 @@ if not SECRET_KEY:
     SECRET_KEY = sec_module.token_hex(32)
 
 app = Flask(__name__)
+CORS(app)
+
 app.config['JSON_SORT_KEYS'] = False
 app.url_map.strict_slashes = False
+
+@app.after_request
+def add_cors_headers(response):
+    origin = request.headers.get('Origin')
+    response.headers['Access-Control-Allow-Origin'] = origin or '*'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+    return response
 
 def generate_id(prefix=''):
     return f"{prefix}{uuid.uuid4().hex[:12]}"
