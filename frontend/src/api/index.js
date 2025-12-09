@@ -1,7 +1,7 @@
 // Detect environment: use proxy in dev, full URL in production
 const API_BASE = import.meta.env.DEV
   ? '/api/admin'  // Vite proxy during local dev
-  : 'https://shopsync-qx6o.onrender.com/admin';  // your deployed backend
+  : 'https://shopsync-qx6o.onrender.com/api/admin';  // your deployed backend
 
 export async function login(email, password) {
   const response = await fetch(`${API_BASE}/login`, {
