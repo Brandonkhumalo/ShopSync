@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getStats, getProductKeys, getShops, getDevices, generateProductKey, getSubscriptions, markSubscriptionPaid } from '../api'
+import { getStats, getProductKeys, getShops, getDevices, generateProductKey, getSubscriptions, markSubscriptionPaid, deleteShop } from '../api'
 
 function Dashboard({ token, email, onLogout }) {
   const [activeTab, setActiveTab] = useState('overview')
@@ -12,6 +12,8 @@ function Dashboard({ token, email, onLogout }) {
   const [generating, setGenerating] = useState(false)
   const [newKey, setNewKey] = useState(null)
   const [markingPaid, setMarkingPaid] = useState(null)
+  const [shopSearch, setShopSearch] = useState('')
+  const [deletingShop, setDeletingShop] = useState(null)
 
   useEffect(() => {
     loadData()
@@ -69,6 +71,35 @@ function Dashboard({ token, email, onLogout }) {
       setMarkingPaid(null)
     }
   }
+
+  const handleDeleteShop = async (shopId, shopName) => {
+    if (!confirm(`Are you sure you want to delete "${shopName}" and ALL its data? This action cannot be undone!`)) {
+      return
+    }
+    if (!confirm(`FINAL WARNING: This will permanently delete the shop, all items, sales, debts, and device registrations. Continue?`)) {
+      return
+    }
+    setDeletingShop(shopId)
+    try {
+      await deleteShop(token, shopId)
+      alert('Shop deleted successfully')
+      loadData()
+    } catch (err) {
+      alert('Failed to delete shop: ' + err.message)
+    } finally {
+      setDeletingShop(null)
+    }
+  }
+
+  const filteredShops = shops.filter(shop => {
+    if (!shopSearch.trim()) return true
+    const search = shopSearch.toLowerCase()
+    return (
+      shop.name?.toLowerCase().includes(search) ||
+      shop.owner_name?.toLowerCase().includes(search) ||
+      shop.owner_surname?.toLowerCase().includes(search)
+    )
+  })
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
@@ -353,11 +384,33 @@ function Dashboard({ token, email, onLogout }) {
                   <h2>Shops</h2>
                 </div>
                 
+                <div className="search-bar">
+                  <input
+                    type="text"
+                    placeholder="Search by shop name or owner name..."
+                    value={shopSearch}
+                    onChange={(e) => setShopSearch(e.target.value)}
+                    className="search-input"
+                  />
+                  {shopSearch && (
+                    <button className="clear-search" onClick={() => setShopSearch('')}>
+                      Clear
+                    </button>
+                  )}
+                </div>
+                
                 {shops.length === 0 ? (
                   <div className="data-table">
                     <div className="empty-state">
                       <h3>No shops registered yet</h3>
                       <p>Shops will appear here once users register</p>
+                    </div>
+                  </div>
+                ) : filteredShops.length === 0 ? (
+                  <div className="data-table">
+                    <div className="empty-state">
+                      <h3>No shops match your search</h3>
+                      <p>Try a different search term</p>
                     </div>
                   </div>
                 ) : (
@@ -372,10 +425,11 @@ function Dashboard({ token, email, onLogout }) {
                           <th>Items</th>
                           <th>Sales</th>
                           <th>Created</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {shops.map(shop => (
+                        {filteredShops.map(shop => (
                           <tr key={shop.id}>
                             <td><strong>{shop.name}</strong></td>
                             <td>{shop.owner_name} {shop.owner_surname}</td>
@@ -384,6 +438,15 @@ function Dashboard({ token, email, onLogout }) {
                             <td>{shop.item_count}</td>
                             <td>{shop.sale_count}</td>
                             <td>{formatDate(shop.created_at)}</td>
+                            <td>
+                              <button 
+                                className="delete-btn"
+                                onClick={() => handleDeleteShop(shop.id, shop.name)}
+                                disabled={deletingShop === shop.id}
+                              >
+                                {deletingShop === shop.id ? 'Deleting...' : 'Delete'}
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

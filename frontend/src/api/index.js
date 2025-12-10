@@ -91,3 +91,17 @@ export async function markSubscriptionPaid(token, shopId) {
   }
   return response.json();
 }
+
+export async function deleteShop(token, shopId) {
+  const response = await fetch(`${API_BASE}/shops/${shopId}`, {
+    method: 'DELETE',
+    headers: { 
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete shop');
+  }
+  return response.json();
+}
