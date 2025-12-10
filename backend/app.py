@@ -60,7 +60,7 @@ def require_valid_app(f):
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT status, expires_at FROM shop_devices 
-                WHERE app_id = ? AND shop_id = ?
+                WHERE app_id = %s AND shop_id = %s
             ''', (app_id, shop_id))
             device = cursor.fetchone()
             
@@ -75,7 +75,7 @@ def require_valid_app(f):
                 return jsonify({'error': 'License expired', 'expired': True}), 403
             
             cursor.execute('''
-                UPDATE shop_devices SET last_seen = ? WHERE app_id = ?
+                UPDATE shop_devices SET last_seen = %s WHERE app_id = %s
             ''', (current_time, app_id))
         
         return f(*args, **kwargs)
@@ -164,7 +164,7 @@ def register_shop():
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO shops (id, name, owner_name, owner_surname, phone_number, services, address, pin)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             shop_id,
             data.get('name'),
@@ -178,7 +178,7 @@ def register_shop():
         
         cursor.execute('''
             INSERT INTO shop_devices (id, app_id, shop_id, device_slot, status, registered_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s)
         ''', (device_id, app_id, shop_id, 1, 'pending', current_time))
     
     return jsonify({
@@ -197,7 +197,7 @@ def verify_pin(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT pin FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT pin FROM shops WHERE id = %s', (shop_id,))
         shop = cursor.fetchone()
         
         if not shop:
@@ -212,7 +212,7 @@ def verify_pin(shop_id):
 def get_shop(shop_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT * FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT * FROM shops WHERE id = %s', (shop_id,))
         shop = cursor.fetchone()
         
         if not shop:
@@ -228,7 +228,7 @@ def update_shop(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
@@ -240,8 +240,8 @@ def update_shop(shop_id):
                 phone_number = COALESCE(?, phone_number),
                 services = COALESCE(?, services),
                 address = COALESCE(?, address),
-                updated_at = ?
-            WHERE id = ?
+                updated_at = %s
+            WHERE id = %s
         ''', (
             data.get('name'),
             data.get('owner_name'),
@@ -263,9 +263,9 @@ def get_items(shop_id):
         cursor = conn.cursor()
         
         if category:
-            cursor.execute('SELECT * FROM items WHERE shop_id = ? AND category = ?', (shop_id, category))
+            cursor.execute('SELECT * FROM items WHERE shop_id = %s AND category = %s', (shop_id, category))
         else:
-            cursor.execute('SELECT * FROM items WHERE shop_id = ?', (shop_id,))
+            cursor.execute('SELECT * FROM items WHERE shop_id = %s', (shop_id,))
         
         items = [dict(row) for row in cursor.fetchall()]
         return jsonify(items)
@@ -284,13 +284,13 @@ def create_item(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
         cursor.execute('''
             INSERT INTO items (id, local_id, shop_id, name, category, price_usd, price_zwg, quantity, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             item_id,
             local_id,
@@ -313,7 +313,7 @@ def update_item(shop_id, item_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id FROM items WHERE (id = ? OR local_id = ?) AND shop_id = ?', (item_id, item_id, shop_id))
+        cursor.execute('SELECT id FROM items WHERE (id = %s OR local_id = %s) AND shop_id = %s', (item_id, item_id, shop_id))
         if not cursor.fetchone():
             return jsonify({'error': 'Item not found'}), 404
         
@@ -324,8 +324,8 @@ def update_item(shop_id, item_id):
                 price_usd = COALESCE(?, price_usd),
                 price_zwg = COALESCE(?, price_zwg),
                 quantity = COALESCE(?, quantity),
-                updated_at = ?
-            WHERE (id = ? OR local_id = ?) AND shop_id = ?
+                updated_at = %s
+            WHERE (id = %s OR local_id = %s) AND shop_id = %s
         ''', (
             data.get('name'),
             data.get('category'),
@@ -344,7 +344,7 @@ def update_item(shop_id, item_id):
 def delete_item(shop_id, item_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM items WHERE (id = ? OR local_id = ?) AND shop_id = ?', (item_id, item_id, shop_id))
+        cursor.execute('DELETE FROM items WHERE (id = %s OR local_id = %s) AND shop_id = %s', (item_id, item_id, shop_id))
         if cursor.rowcount == 0:
             return jsonify({'error': 'Item not found'}), 404
     
@@ -354,7 +354,7 @@ def delete_item(shop_id, item_id):
 def get_categories(shop_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT DISTINCT category FROM items WHERE shop_id = ? AND category IS NOT NULL', (shop_id,))
+        cursor.execute('SELECT DISTINCT category FROM items WHERE shop_id = %s AND category IS NOT NULL', (shop_id,))
         categories = [row['category'] for row in cursor.fetchall()]
         return jsonify(categories)
 
@@ -366,14 +366,14 @@ def get_sales(shop_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
         
-        query = 'SELECT * FROM sales WHERE shop_id = ?'
+        query = 'SELECT * FROM sales WHERE shop_id = %s'
         params = [shop_id]
         
         if start_date:
-            query += ' AND sale_date >= ?'
+            query += ' AND sale_date >= %s'
             params.append(start_date)
         if end_date:
-            query += ' AND sale_date <= ?'
+            query += ' AND sale_date <= %s'
             params.append(end_date)
         
         query += ' ORDER BY sale_date DESC'
@@ -393,14 +393,14 @@ def create_sale(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
         cursor.execute('''
             INSERT INTO sales (id, local_id, shop_id, item_id, item_name, quantity, total_usd, total_zwg,
                              payment_method, debt_used_usd, debt_used_zwg, debt_id, sale_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             sale_id,
             local_id,
@@ -433,15 +433,15 @@ def get_sales_report(shop_id):
                 COALESCE(SUM(total_usd), 0) as total_usd,
                 COALESCE(SUM(total_zwg), 0) as total_zwg,
                 COALESCE(SUM(quantity), 0) as total_items_sold
-            FROM sales WHERE shop_id = ?
+            FROM sales WHERE shop_id = %s
         '''
         params = [shop_id]
         
         if start_date:
-            query += ' AND sale_date >= ?'
+            query += ' AND sale_date >= %s'
             params.append(start_date)
         if end_date:
-            query += ' AND sale_date <= ?'
+            query += ' AND sale_date <= %s'
             params.append(end_date)
         
         cursor.execute(query, params)
@@ -449,15 +449,15 @@ def get_sales_report(shop_id):
         
         top_items_query = '''
             SELECT item_name, SUM(quantity) as total_qty, SUM(total_usd) as revenue_usd
-            FROM sales WHERE shop_id = ?
+            FROM sales WHERE shop_id = %s
         '''
         top_params = [shop_id]
         
         if start_date:
-            top_items_query += ' AND sale_date >= ?'
+            top_items_query += ' AND sale_date >= %s'
             top_params.append(start_date)
         if end_date:
-            top_items_query += ' AND sale_date <= ?'
+            top_items_query += ' AND sale_date <= %s'
             top_params.append(end_date)
         
         top_items_query += ' GROUP BY item_name ORDER BY total_qty DESC LIMIT 10'
@@ -477,9 +477,9 @@ def get_debts(shop_id):
         cursor = conn.cursor()
         
         if include_cleared:
-            cursor.execute('SELECT * FROM debts WHERE shop_id = ? ORDER BY created_at DESC', (shop_id,))
+            cursor.execute('SELECT * FROM debts WHERE shop_id = %s ORDER BY created_at DESC', (shop_id,))
         else:
-            cursor.execute('SELECT * FROM debts WHERE shop_id = ? AND cleared = 0 ORDER BY created_at DESC', (shop_id,))
+            cursor.execute('SELECT * FROM debts WHERE shop_id = %s AND cleared = 0 ORDER BY created_at DESC', (shop_id,))
         
         debts = [dict(row) for row in cursor.fetchall()]
         return jsonify(debts)
@@ -498,13 +498,13 @@ def create_debt(shop_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
         cursor.execute('''
             INSERT INTO debts (id, local_id, shop_id, customer_name, amount_usd, amount_zwg, type, notes, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             debt_id,
             local_id,
@@ -527,7 +527,7 @@ def update_debt(shop_id, debt_id):
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id FROM debts WHERE (id = ? OR local_id = ?) AND shop_id = ?', (debt_id, debt_id, shop_id))
+        cursor.execute('SELECT id FROM debts WHERE (id = %s OR local_id = %s) AND shop_id = %s', (debt_id, debt_id, shop_id))
         if not cursor.fetchone():
             return jsonify({'error': 'Debt not found'}), 404
         
@@ -538,8 +538,8 @@ def update_debt(shop_id, debt_id):
                 amount_zwg = COALESCE(?, amount_zwg),
                 type = COALESCE(?, type),
                 notes = COALESCE(?, notes),
-                updated_at = ?
-            WHERE (id = ? OR local_id = ?) AND shop_id = ?
+                updated_at = %s
+            WHERE (id = %s OR local_id = %s) AND shop_id = %s
         ''', (
             data.get('customer_name'),
             data.get('amount_usd'),
@@ -559,8 +559,8 @@ def clear_debt(shop_id, debt_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            UPDATE debts SET cleared = 1, cleared_at = ?, updated_at = ?
-            WHERE (id = ? OR local_id = ?) AND shop_id = ?
+            UPDATE debts SET cleared = 1, cleared_at = %s, updated_at = %s
+            WHERE (id = %s OR local_id = %s) AND shop_id = %s
         ''', (get_timestamp(), get_timestamp(), debt_id, debt_id, shop_id))
         
         if cursor.rowcount == 0:
@@ -572,7 +572,7 @@ def clear_debt(shop_id, debt_id):
 def delete_debt(shop_id, debt_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('DELETE FROM debts WHERE (id = ? OR local_id = ?) AND shop_id = ?', (debt_id, debt_id, shop_id))
+        cursor.execute('DELETE FROM debts WHERE (id = %s OR local_id = %s) AND shop_id = %s', (debt_id, debt_id, shop_id))
         if cursor.rowcount == 0:
             return jsonify({'error': 'Debt not found'}), 404
     
@@ -588,7 +588,7 @@ def get_debts_summary(shop_id):
                 SUM(CASE WHEN cleared = 0 THEN 1 ELSE 0 END) as active_debts,
                 COALESCE(SUM(CASE WHEN cleared = 0 THEN amount_usd ELSE 0 END), 0) as total_usd,
                 COALESCE(SUM(CASE WHEN cleared = 0 THEN amount_zwg ELSE 0 END), 0) as total_zwg
-            FROM debts WHERE shop_id = ?
+            FROM debts WHERE shop_id = %s
         ''', (shop_id,))
         summary = dict(cursor.fetchone())
         return jsonify(summary)
@@ -608,19 +608,19 @@ def sync_data(shop_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
         
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
         for item in data.get('items', []):
             local_id = item.get('local_id')
-            cursor.execute('SELECT id FROM items WHERE local_id = ? AND shop_id = ?', (local_id, shop_id))
+            cursor.execute('SELECT id FROM items WHERE local_id = %s AND shop_id = %s', (local_id, shop_id))
             existing = cursor.fetchone()
             
             if existing:
                 cursor.execute('''
-                    UPDATE items SET name = ?, category = ?, price_usd = ?, price_zwg = ?, quantity = ?, updated_at = ?
-                    WHERE local_id = ? AND shop_id = ?
+                    UPDATE items SET name = %s, category = %s, price_usd = %s, price_zwg = %s, quantity = %s, updated_at = %s
+                    WHERE local_id = %s AND shop_id = %s
                 ''', (item.get('name'), item.get('category'), item.get('price_usd', 0), 
                       item.get('price_zwg', 0), item.get('quantity', 0), get_timestamp(), local_id, shop_id))
                 results['items']['updated'] += 1
@@ -628,7 +628,7 @@ def sync_data(shop_id):
                 item_id = generate_id('ITEM_')
                 cursor.execute('''
                     INSERT INTO items (id, local_id, shop_id, name, category, price_usd, price_zwg, quantity, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (item_id, local_id, shop_id, item.get('name'), item.get('category'),
                       item.get('price_usd', 0), item.get('price_zwg', 0), item.get('quantity', 0),
                       item.get('created_at', get_timestamp())))
@@ -636,13 +636,13 @@ def sync_data(shop_id):
         
         for sale in data.get('sales', []):
             local_id = sale.get('local_id')
-            cursor.execute('SELECT id FROM sales WHERE local_id = ? AND shop_id = ?', (local_id, shop_id))
+            cursor.execute('SELECT id FROM sales WHERE local_id = %s AND shop_id = %s', (local_id, shop_id))
             if not cursor.fetchone():
                 sale_id = generate_id('SALE_')
                 cursor.execute('''
                     INSERT INTO sales (id, local_id, shop_id, item_id, item_name, quantity, total_usd, total_zwg,
                                       payment_method, debt_used_usd, debt_used_zwg, debt_id, sale_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (sale_id, local_id, shop_id, sale.get('item_id'), sale.get('item_name'),
                       sale.get('quantity', 0), sale.get('total_usd', 0), sale.get('total_zwg', 0),
                       sale.get('payment_method', 'CASH'), sale.get('debt_used_usd', 0),
@@ -651,14 +651,14 @@ def sync_data(shop_id):
         
         for debt in data.get('debts', []):
             local_id = debt.get('local_id')
-            cursor.execute('SELECT id FROM debts WHERE local_id = ? AND shop_id = ?', (local_id, shop_id))
+            cursor.execute('SELECT id FROM debts WHERE local_id = %s AND shop_id = %s', (local_id, shop_id))
             existing = cursor.fetchone()
             
             if existing:
                 cursor.execute('''
-                    UPDATE debts SET customer_name = ?, amount_usd = ?, amount_zwg = ?, type = ?, 
-                                    notes = ?, cleared = ?, cleared_at = ?, updated_at = ?
-                    WHERE local_id = ? AND shop_id = ?
+                    UPDATE debts SET customer_name = %s, amount_usd = %s, amount_zwg = %s, type = %s, 
+                                    notes = %s, cleared = %s, cleared_at = %s, updated_at = %s
+                    WHERE local_id = %s AND shop_id = %s
                 ''', (debt.get('customer_name'), debt.get('amount_usd', 0), debt.get('amount_zwg', 0),
                       debt.get('type', 'CREDIT_USED'), debt.get('notes', ''), 
                       1 if debt.get('cleared') else 0, debt.get('cleared_at'), get_timestamp(), local_id, shop_id))
@@ -667,7 +667,7 @@ def sync_data(shop_id):
                 debt_id = generate_id('DEBT_')
                 cursor.execute('''
                     INSERT INTO debts (id, local_id, shop_id, customer_name, amount_usd, amount_zwg, type, notes, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (debt_id, local_id, shop_id, debt.get('customer_name'), debt.get('amount_usd', 0),
                       debt.get('amount_zwg', 0), debt.get('type', 'CREDIT_USED'), debt.get('notes', ''),
                       debt.get('created_at', get_timestamp())))
@@ -687,7 +687,7 @@ def get_sync_status(shop_id):
         cursor = conn.cursor()
         cursor.execute('''
             SELECT sync_time, success FROM sync_logs 
-            WHERE shop_id = ? ORDER BY sync_time DESC LIMIT 1
+            WHERE shop_id = %s ORDER BY sync_time DESC LIMIT 1
         ''', (shop_id,))
         last_sync = cursor.fetchone()
         
@@ -709,7 +709,7 @@ def create_product_key():
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO product_keys (id, product_key, status, created_at)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, %s, %s, %s)
         ''', (key_id, product_key, 'unused', current_time))
     
     return jsonify({
@@ -753,13 +753,13 @@ def activate_product_key(shop_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
         
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
         cursor.execute('''
             SELECT id, app_id, device_slot, status, expires_at FROM shop_devices 
-            WHERE app_id = ? AND shop_id = ?
+            WHERE app_id = %s AND shop_id = %s
         ''', (app_id, shop_id))
         device = cursor.fetchone()
         
@@ -767,7 +767,7 @@ def activate_product_key(shop_id):
             return jsonify({'error': 'Device not registered for this shop'}), 404
         
         cursor.execute('''
-            SELECT id, status FROM product_keys WHERE product_key = ?
+            SELECT id, status FROM product_keys WHERE product_key = %s
         ''', (product_key,))
         key_record = cursor.fetchone()
         
@@ -782,21 +782,21 @@ def activate_product_key(shop_id):
         cursor.execute('''
             UPDATE product_keys SET 
                 status = 'used', 
-                activated_at = ?, 
-                expires_at = ?, 
-                shop_id = ?, 
-                app_id = ?
-            WHERE id = ?
+                activated_at = %s, 
+                expires_at = %s, 
+                shop_id = %s, 
+                app_id = %s
+            WHERE id = %s
         ''', (current_time, expires_at, shop_id, app_id, key_record['id']))
         
         cursor.execute('''
             UPDATE shop_devices SET 
                 status = 'active', 
-                product_key = ?, 
-                activated_at = ?, 
-                expires_at = ?,
-                last_seen = ?
-            WHERE app_id = ? AND shop_id = ?
+                product_key = %s, 
+                activated_at = %s, 
+                expires_at = %s,
+                last_seen = %s
+            WHERE app_id = %s AND shop_id = %s
         ''', (product_key, current_time, expires_at, current_time, app_id, shop_id))
     
     return jsonify({
@@ -815,7 +815,7 @@ def get_shop_devices(shop_id):
         cursor = conn.cursor()
         cursor.execute('''
             SELECT id, app_id, device_slot, status, registered_at, activated_at, expires_at, last_seen 
-            FROM shop_devices WHERE shop_id = ? ORDER BY device_slot
+            FROM shop_devices WHERE shop_id = %s ORDER BY device_slot
         ''', (shop_id,))
         devices = [dict(row) for row in cursor.fetchall()]
         
@@ -841,14 +841,14 @@ def register_new_device(shop_id):
     with get_db_context() as conn:
         cursor = conn.cursor()
         
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
         if requesting_app_id:
             cursor.execute('''
                 SELECT status, expires_at FROM shop_devices 
-                WHERE app_id = ? AND shop_id = ? AND status = 'active'
+                WHERE app_id = %s AND shop_id = %s AND status = 'active'
             ''', (requesting_app_id, shop_id))
             auth_device = cursor.fetchone()
             
@@ -860,14 +860,14 @@ def register_new_device(shop_id):
                 return jsonify({'error': 'Your license has expired. Please renew before registering new devices.'}), 403
         else:
             cursor.execute('''
-                SELECT COUNT(*) as count FROM shop_devices WHERE shop_id = ?
+                SELECT COUNT(*) as count FROM shop_devices WHERE shop_id = %s
             ''', (shop_id,))
             existing_count = cursor.fetchone()['count']
             if existing_count > 0:
                 return jsonify({'error': 'Authentication required. Please provide X-App-Id header from an active device.'}), 401
         
         cursor.execute('''
-            SELECT COUNT(*) as count FROM shop_devices WHERE shop_id = ?
+            SELECT COUNT(*) as count FROM shop_devices WHERE shop_id = %s
         ''', (shop_id,))
         device_count = cursor.fetchone()['count']
         
@@ -875,7 +875,7 @@ def register_new_device(shop_id):
             return jsonify({'error': 'Maximum number of devices (3) reached for this shop'}), 400
         
         cursor.execute('''
-            SELECT MAX(device_slot) as max_slot FROM shop_devices WHERE shop_id = ?
+            SELECT MAX(device_slot) as max_slot FROM shop_devices WHERE shop_id = %s
         ''', (shop_id,))
         result = cursor.fetchone()
         next_slot = (result['max_slot'] or 0) + 1
@@ -886,7 +886,7 @@ def register_new_device(shop_id):
         
         cursor.execute('''
             INSERT INTO shop_devices (id, app_id, shop_id, device_slot, status, registered_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, %s, %s, %s, %s, %s)
         ''', (device_id, app_id, shop_id, next_slot, 'pending', current_time))
     
     return jsonify({
@@ -903,7 +903,7 @@ def get_device_status(shop_id, app_id):
         cursor = conn.cursor()
         cursor.execute('''
             SELECT id, app_id, device_slot, status, activated_at, expires_at, last_seen 
-            FROM shop_devices WHERE app_id = ? AND shop_id = ?
+            FROM shop_devices WHERE app_id = %s AND shop_id = %s
         ''', (app_id, shop_id))
         device = cursor.fetchone()
         
@@ -938,7 +938,7 @@ def renew_device_license(shop_id, app_id):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT id, device_slot, status FROM shop_devices WHERE app_id = ? AND shop_id = ?
+            SELECT id, device_slot, status FROM shop_devices WHERE app_id = %s AND shop_id = %s
         ''', (app_id, shop_id))
         device = cursor.fetchone()
         
@@ -946,7 +946,7 @@ def renew_device_license(shop_id, app_id):
             return jsonify({'error': 'Device not found'}), 404
         
         cursor.execute('''
-            SELECT id, status FROM product_keys WHERE product_key = ?
+            SELECT id, status FROM product_keys WHERE product_key = %s
         ''', (product_key,))
         key_record = cursor.fetchone()
         
@@ -961,21 +961,21 @@ def renew_device_license(shop_id, app_id):
         cursor.execute('''
             UPDATE product_keys SET 
                 status = 'used', 
-                activated_at = ?, 
-                expires_at = ?, 
-                shop_id = ?, 
-                app_id = ?
-            WHERE id = ?
+                activated_at = %s, 
+                expires_at = %s, 
+                shop_id = %s, 
+                app_id = %s
+            WHERE id = %s
         ''', (current_time, expires_at, shop_id, app_id, key_record['id']))
         
         cursor.execute('''
             UPDATE shop_devices SET 
                 status = 'active', 
-                product_key = ?, 
-                activated_at = ?, 
-                expires_at = ?,
-                last_seen = ?
-            WHERE app_id = ? AND shop_id = ?
+                product_key = %s, 
+                activated_at = %s, 
+                expires_at = %s,
+                last_seen = %s
+            WHERE app_id = %s AND shop_id = %s
         ''', (product_key, current_time, expires_at, current_time, app_id, shop_id))
     
     return jsonify({
@@ -994,7 +994,7 @@ def get_license_info(shop_id, app_id):
         cursor = conn.cursor()
         cursor.execute('''
             SELECT id, app_id, device_slot, status, product_key, activated_at, expires_at, last_seen 
-            FROM shop_devices WHERE app_id = ? AND shop_id = ?
+            FROM shop_devices WHERE app_id = %s AND shop_id = %s
         ''', (app_id, shop_id))
         device = cursor.fetchone()
         
@@ -1070,7 +1070,7 @@ def admin_login():
     
     with get_db_context() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT id, email, password_hash FROM admin_users WHERE email = ?', (email,))
+        cursor.execute('SELECT id, email, password_hash FROM admin_users WHERE email = %s', (email,))
         admin = cursor.fetchone()
         
         if not admin or not check_password_hash(admin['password_hash'], password):
@@ -1110,7 +1110,7 @@ def admin_create_product_key():
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO product_keys (id, product_key, status, created_at)
-            VALUES (?, ?, 'unused', ?)
+            VALUES (?, %s, 'unused', %s)
         ''', (key_id, product_key, get_timestamp()))
     
     return jsonify({
@@ -1247,7 +1247,7 @@ def mark_subscription_paid(shop_id):
         cursor = conn.cursor()
         current_time = get_timestamp()
         
-        cursor.execute('SELECT id FROM shops WHERE id = ?', (shop_id,))
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
         if not cursor.fetchone():
             return jsonify({'error': 'Shop not found'}), 404
         
@@ -1257,15 +1257,15 @@ def mark_subscription_paid(shop_id):
         cursor.execute('''
             UPDATE shops 
             SET payment_status = 'paid', 
-                last_payment_date = ?,
-                subscription_end = ?
-            WHERE id = ?
+                last_payment_date = %s,
+                subscription_end = %s
+            WHERE id = %s
         ''', (current_time, new_end, shop_id))
         
         cursor.execute('''
             UPDATE shop_devices 
-            SET expires_at = ?, status = 'active'
-            WHERE shop_id = ?
+            SET expires_at = %s, status = 'active'
+            WHERE shop_id = %s
         ''', (new_end, shop_id))
         
         return jsonify({

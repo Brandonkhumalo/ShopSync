@@ -1,10 +1,10 @@
-modules = ["java-graalvm22.3", "python-3.11", "nodejs-20"]
+modules = ["java-graalvm22.3", "python-3.11", "nodejs-20", "web"]
 [agent]
 expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["openssl", "postgresql"]
+packages = ["cargo", "libiconv", "openssl", "postgresql", "rustc"]
 
 [workflows]
 runButton = "Project"
@@ -35,7 +35,7 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 44447
+localPort = 33647
 externalPort = 3000
 
 [[ports]]

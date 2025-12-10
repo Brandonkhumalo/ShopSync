@@ -16,15 +16,13 @@ def get_db():
 @contextmanager
 def get_db_context():
     conn = get_db()
-    cursor = conn.cursor()
     try:
-        yield cursor
+        yield conn
         conn.commit()
     except Exception as e:
         conn.rollback()
         raise e
     finally:
-        cursor.close()
         conn.close()
 
 
@@ -73,7 +71,8 @@ def clear_all_data(cursor):
 # ----------------------------
 
 def init_db():
-    with get_db_context() as (conn, cursor):
+    with get_db_context() as conn:
+        cursor = conn.cursor()
 
         # SHOPS
         cursor.execute("""
