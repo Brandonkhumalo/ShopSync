@@ -1074,18 +1074,17 @@ def admin_login():
         admin = cursor.fetchone()
         
         if not admin or not check_password_hash(admin['password_hash'], password):
-            return jsonify({'error': 'Invalid credentials'}), 401
+            return jsonify({'error': 'Invalid email or password'}), 401
         
-        cursor.execute('UPDATE admin_users SET last_login_at = ? WHERE id = ?', (get_timestamp(), admin['id']))
-        
-        token = jwt.encode({
+        token_payload = {
             'admin_id': admin['id'],
             'email': admin['email'],
             'role': 'admin',
-            'exp': datetime.utcnow() + timedelta(hours=24)
-        }, SECRET_KEY, algorithm='HS256')
-        
-        return jsonify({'token': token, 'email': admin['email']})
+            'exp': datetime.utcnow() + timedelta(hours=8)  # token valid for 8 hours
+        }
+        token = jwt.encode(token_payload, SECRET_KEY, algorithm='HS256')
+    
+    return jsonify({'token': token, 'message': 'Login successful'})
 
 @app.route('/api/admin/product-keys', methods=['GET'])
 @require_admin

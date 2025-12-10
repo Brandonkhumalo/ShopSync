@@ -18,7 +18,7 @@ def get_db_context():
     conn = get_db()
     cursor = conn.cursor()
     try:
-        yield conn, cursor
+        yield cursor
         conn.commit()
     except Exception as e:
         conn.rollback()
