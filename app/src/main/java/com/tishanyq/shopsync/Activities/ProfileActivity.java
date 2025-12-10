@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ProfileActivity extends AppCompatActivity {
-    private static final String WHATSAPP_NUMBER = "+263788539918";
+    private static final String WHATSAPP_NUMBER = "+263787700149";
     private static final String PREFS_NAME = "ShopSyncPrefs";
     
     private TextView tvShopId, tvShopName, tvOwner, tvPhone, tvServices, tvAddress, tvSyncStatus;

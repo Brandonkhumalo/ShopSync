@@ -2,4 +2,56 @@
     <string name="app_name">ShopSync</string>
     <string name="welcome_message">Welcome to FrostSync POS</string>
     <string name="offline_first">Offline First • Always Ready</string>
+    <string name="terms_conditions">
+    TERMS &amp; CONDITIONS\n
+    Last Updated: December 2025\n\n
+
+    1. Introduction\n
+    These Terms &amp; Conditions ("Terms") govern your use of this mobile application (ShopSync) provided by Fedit Tech. By creating an account or using the App, you agree to these Terms.\n\n
+
+    2. Service Description\n
+    This App is a business management tool for SMEs, providing features such as sales tracking, expenses, inventory, and business reporting. Features may change over time.\n\n
+
+    3. Subscription &amp; Payments\n
+    • The service costs USD $10 per month.\n
+    • Payments are non-refundable unless required by law.\n
+    • Non-payment may result in suspension or termination.\n
+    • Prices may change with prior notice.\n\n
+
+    4. User Responsibilities\n
+    • Use the App for lawful business purposes only.\n
+    • Keep your login credentials secure.\n
+    • Ensure all data entered is accurate.\n\n
+
+    5. Data &amp; Privacy\n
+    • We store/process your data to deliver App functionality.\n
+    • We do NOT sell your data to third parties.\n
+    • Export or back up your data regularly.\n\n
+
+    6. Prohibited Activities\n
+    Do NOT:\n
+    • Hack, reverse-engineer, or modify the App.\n
+    • Upload harmful or illegal content.\n
+    • Use the App for fraud or money laundering.\n\n
+
+    7. Service Availability\n
+    • We strive for 99% uptime.\n
+    • Maintenance and updates may cause temporary downtime.\n\n
+
+    8. Limitation of Liability\n
+    • We are not responsible for business losses or lost profits.\n
+    • The App is provided “as is” without warranties.\n\n
+
+    9. Account Termination\n
+    We may terminate accounts for:\n
+    • Non-payment\n
+    • Violations of these Terms\n
+    • Illegal activity\n\n
+
+    10. Changes to Terms\n
+    We may update these Terms at any time. Continued use means acceptance.\n\n
+
+    11. Contact Us\n
+    Phone: +263 78 770 0149\n
+</string>
 </resources>

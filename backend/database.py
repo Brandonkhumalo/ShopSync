@@ -1,101 +1,64 @@
-import sqlite3
 import os
+import psycopg2
+from psycopg2.extras import DictCursor
 from contextlib import contextmanager
 from werkzeug.security import generate_password_hash
+from dotenv import load_dotenv
 
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), 'shopsync.db')
+load_dotenv()
+
+# Railway PostgreSQL connection
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db():
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA foreign_keys = ON')
-    return conn
+    return psycopg2.connect(DATABASE_URL, cursor_factory=DictCursor)
 
 @contextmanager
 def get_db_context():
     conn = get_db()
+    cursor = conn.cursor()
     try:
-        yield conn
+        yield conn, cursor
         conn.commit()
     except Exception as e:
         conn.rollback()
         raise e
     finally:
+        cursor.close()
         conn.close()
 
-def apply_schema_migrations(cursor):
-    """Apply schema migrations to ensure all columns exist"""
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS schema_migrations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            migration_name TEXT UNIQUE NOT NULL,
-            applied_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
-        )
-    ''')
-    
-    cursor.execute("SELECT migration_name FROM schema_migrations")
-    applied = {row[0] for row in cursor.fetchall()}
-    
-    if 'add_app_id_to_shops' not in applied:
-        cursor.execute("PRAGMA table_info(shops)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'app_id' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN app_id TEXT")
-        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_app_id_to_shops',))
-    
-    if 'add_product_key_to_shops' not in applied:
-        cursor.execute("PRAGMA table_info(shops)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'product_key' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN product_key TEXT")
-        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_product_key_to_shops',))
-    
-    if 'add_activated_at_to_shops' not in applied:
-        cursor.execute("PRAGMA table_info(shops)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'activated_at' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN activated_at INTEGER")
-        if 'expires_at' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN expires_at INTEGER")
-        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_activated_at_to_shops',))
-    
-    if 'add_subscription_tracking' not in applied:
-        cursor.execute("PRAGMA table_info(shops)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'subscription_start' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN subscription_start INTEGER")
-        if 'subscription_end' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN subscription_end INTEGER")
-        if 'last_payment_date' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN last_payment_date INTEGER")
-        if 'payment_status' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN payment_status TEXT DEFAULT 'pending'")
-        cursor.execute("INSERT INTO schema_migrations (migration_name) VALUES (?)", ('add_subscription_tracking',))
+
+# ----------------------------
+#   ADMIN TABLE + SEED USER
+# ----------------------------
 
 def create_admin_tables(cursor):
-    """Create admin-related tables"""
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS admin_users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-            last_login_at INTEGER
+            created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+            last_login_at BIGINT
         )
-    ''')
+    """)
+
 
 def seed_admin_user(cursor):
-    """Create default admin user if not exists"""
-    cursor.execute("SELECT id FROM admin_users WHERE email = ?", ('shopsyncadmin@gmail.com',))
-    if not cursor.fetchone():
+    cursor.execute("SELECT id FROM admin_users WHERE email=%s", ('shopsyncadmin@gmail.com',))
+    if cursor.fetchone() is None:
         password_hash = generate_password_hash('shopsyncadmin123%')
-        cursor.execute('''
+        cursor.execute("""
             INSERT INTO admin_users (email, password_hash)
-            VALUES (?, ?)
-        ''', ('shopsyncadmin@gmail.com', password_hash))
+            VALUES (%s, %s)
+        """, ('shopsyncadmin@gmail.com', password_hash))
+
+
+# ----------------------------
+#   CLEAR ALL DATA
+# ----------------------------
 
 def clear_all_data(cursor):
-    """Clear all shops, product keys, and related data"""
     cursor.execute("DELETE FROM sync_logs")
     cursor.execute("DELETE FROM debts")
     cursor.execute("DELETE FROM sales")
@@ -104,11 +67,16 @@ def clear_all_data(cursor):
     cursor.execute("DELETE FROM product_keys")
     cursor.execute("DELETE FROM shops")
 
+
+# ----------------------------
+#   INITIALIZE FULL POSTGRES DB
+# ----------------------------
+
 def init_db():
-    with get_db_context() as conn:
-        cursor = conn.cursor()
-        
-        cursor.execute('''
+    with get_db_context() as (conn, cursor):
+
+        # SHOPS
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS shops (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -118,17 +86,21 @@ def init_db():
                 services TEXT,
                 address TEXT,
                 pin TEXT,
-                created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-                updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+                app_id TEXT,
+                product_key TEXT,
+                activated_at BIGINT,
+                expires_at BIGINT,
+                subscription_start BIGINT,
+                subscription_end BIGINT,
+                last_payment_date BIGINT,
+                payment_status TEXT DEFAULT 'pending',
+                created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+                updated_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
             )
-        ''')
-        
-        cursor.execute("PRAGMA table_info(shops)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if 'pin' not in columns:
-            cursor.execute("ALTER TABLE shops ADD COLUMN pin TEXT")
-        
-        cursor.execute('''
+        """)
+
+        # ITEMS
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS items (
                 id TEXT PRIMARY KEY,
                 local_id TEXT UNIQUE,
@@ -138,13 +110,14 @@ def init_db():
                 price_usd REAL DEFAULT 0,
                 price_zwg REAL DEFAULT 0,
                 quantity INTEGER DEFAULT 0,
-                created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-                updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+                created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+                updated_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
                 FOREIGN KEY (shop_id) REFERENCES shops(id)
             )
-        ''')
-        
-        cursor.execute('''
+        """)
+
+        # SALES
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS sales (
                 id TEXT PRIMARY KEY,
                 local_id TEXT UNIQUE,
@@ -158,13 +131,14 @@ def init_db():
                 debt_used_usd REAL DEFAULT 0,
                 debt_used_zwg REAL DEFAULT 0,
                 debt_id TEXT,
-                sale_date INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-                created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+                sale_date BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+                created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
                 FOREIGN KEY (shop_id) REFERENCES shops(id)
             )
-        ''')
-        
-        cursor.execute('''
+        """)
+
+        # DEBTS
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS debts (
                 id TEXT PRIMARY KEY,
                 local_id TEXT UNIQUE,
@@ -174,39 +148,42 @@ def init_db():
                 amount_zwg REAL DEFAULT 0,
                 type TEXT DEFAULT 'CREDIT_USED',
                 notes TEXT,
-                created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+                created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
                 cleared INTEGER DEFAULT 0,
-                cleared_at INTEGER,
-                updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+                cleared_at BIGINT,
+                updated_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
                 FOREIGN KEY (shop_id) REFERENCES shops(id)
             )
-        ''')
-        
-        cursor.execute('''
+        """)
+
+        # SYNC LOGS
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS sync_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 shop_id TEXT NOT NULL,
-                sync_time INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+                sync_time BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
                 success INTEGER DEFAULT 1,
                 FOREIGN KEY (shop_id) REFERENCES shops(id)
             )
-        ''')
-        
-        cursor.execute('''
+        """)
+
+        # PRODUCT KEYS
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS product_keys (
                 id TEXT PRIMARY KEY,
                 product_key TEXT UNIQUE NOT NULL,
                 status TEXT DEFAULT 'unused',
-                created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-                activated_at INTEGER,
-                expires_at INTEGER,
+                created_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+                activated_at BIGINT,
+                expires_at BIGINT,
                 shop_id TEXT,
                 app_id TEXT,
                 FOREIGN KEY (shop_id) REFERENCES shops(id)
             )
-        ''')
-        
-        cursor.execute('''
+        """)
+
+        # SHOP DEVICES
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS shop_devices (
                 id TEXT PRIMARY KEY,
                 app_id TEXT UNIQUE NOT NULL,
@@ -214,22 +191,23 @@ def init_db():
                 device_slot INTEGER NOT NULL,
                 status TEXT DEFAULT 'pending',
                 product_key TEXT,
-                registered_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
-                activated_at INTEGER,
-                expires_at INTEGER,
-                last_seen INTEGER,
+                registered_at BIGINT DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+                activated_at BIGINT,
+                expires_at BIGINT,
+                last_seen BIGINT,
                 FOREIGN KEY (shop_id) REFERENCES shops(id)
             )
-        ''')
-        
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_items_shop ON items(shop_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_sales_shop ON sales(shop_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_debts_shop ON debts(shop_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_product_keys_status ON product_keys(status)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_shop_devices_shop ON shop_devices(shop_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_shop_devices_app ON shop_devices(app_id)')
-        
-        apply_schema_migrations(cursor)
+        """)
+
+        # INDEXES
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_items_shop ON items(shop_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sales_shop ON sales(shop_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_debts_shop ON debts(shop_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_product_keys_status ON product_keys(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_shop_devices_shop ON shop_devices(shop_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_shop_devices_app ON shop_devices(app_id)")
+
+        # ADMIN SETUP
         create_admin_tables(cursor)
         seed_admin_user(cursor)
