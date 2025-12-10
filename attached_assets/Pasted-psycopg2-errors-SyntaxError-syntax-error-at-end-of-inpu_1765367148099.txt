@@ -1,0 +1,69 @@
+psycopg2.errors.SyntaxError: syntax error at end of input
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+    return super().execute(query, vars)
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/psycopg2/extras.py", line 146, in execute
+    ^^^^^^^^^^^^^^^^^^^^^
+    """, (current_time,))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        WHERE expires_at IS NOT NULL AND expires_at < ?
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        SELECT COUNT(*) as total FROM shop_devices
+    ~~~~~~~~~~~~~~^^^^
+    cursor.execute("""
+  File "/opt/render/project/src/backend/app.py", line 1187, in get_admin_stats
+    return f(*args, **kwargs)
+  File "/opt/render/project/src/backend/app.py", line 1056, in decorated_function
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    rv = self.dispatch_request()
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+                                                ~^^^^^^^^^^^^^^^^^
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    rv = self.handle_user_exception(e)
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    response = self.full_dispatch_request()
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+Traceback (most recent call last):
+[2025-12-10 11:41:55,606] ERROR in app: Exception on /api/admin/stats [GET]
+127.0.0.1 - - [10/Dec/2025:11:41:54 +0000] "OPTIONS /api/admin/product-keys HTTP/1.1" 200 0 "https://shopsynczim-78uvxbria-brandons-projects-2ebd7177.vercel.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:54 +0000] "OPTIONS /api/admin/shops HTTP/1.1" 200 0 "https://shopsynczim-78uvxbria-brandons-projects-2ebd7177.vercel.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:53 +0000] "OPTIONS /api/admin/subscriptions HTTP/1.1" 200 0 "https://shopsynczim-78uvxbria-brandons-projects-2ebd7177.vercel.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:52 +0000] "OPTIONS /api/admin/devices HTTP/1.1" 200 0 "https://shopsynczim-78uvxbria-brandons-projects-2ebd7177.vercel.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:52 +0000] "OPTIONS /api/admin/stats HTTP/1.1" 200 0 "https://shopsynczim-78uvxbria-brandons-projects-2ebd7177.vercel.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:51 +0000] "POST /api/admin/login HTTP/1.1" 200 230 "https://shopsynczim-78uvxbria-brandons-projects-2ebd7177.vercel.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:49 +0000] "OPTIONS /api/admin/login HTTP/1.1" 200 0 "https://shopsynczim-78uvxbria-brandons-projects-2ebd7177.vercel.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:48 +0000] "GET /api/admin/subscriptions HTTP/1.1" 200 3 "https://shopsynczim.netlify.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+127.0.0.1 - - [10/Dec/2025:11:41:48 +0000] "GET /api/admin/stats HTTP/1.1" 500 265 "https://shopsynczim.netlify.app/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36"
+                ^
+LINE 4:         
+psycopg2.errors.SyntaxError: syntax error at end of input
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+    return super().execute(query, vars)
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/psycopg2/extras.py", line 146, in execute
+    ^^^^^^^^^^^^^^^^^^^^^
+    """, (current_time,))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        WHERE expires_at IS NOT NULL AND expires_at < ?
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        SELECT COUNT(*) as total FROM shop_devices
+    ~~~~~~~~~~~~~~^^^^
+    cursor.execute("""
+  File "/opt/render/project/src/backend/app.py", line 1187, in get_admin_stats
+    return f(*args, **kwargs)
+  File "/opt/render/project/src/backend/app.py", line 1056, in decorated_function
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 902, in dispatch_request
+    rv = self.dispatch_request()
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 917, in full_dispatch_request
+                                                ~^^^^^^^^^^^^^^^^^
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    rv = self.handle_user_exception(e)
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 919, in full_dispatch_request
+    response = self.full_dispatch_request()
+  File "/opt/render/project/src/.venv/lib/python3.13/site-packages/flask/app.py", line 1511, in wsgi_app
+Traceback (most recent call last):
+[2025-12-10 11:41:48,084] ERROR in app: Exception on /api/admin/stats [GET]

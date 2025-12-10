@@ -164,7 +164,7 @@ def register_shop():
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO shops (id, name, owner_name, owner_surname, phone_number, services, address, pin)
-            VALUES (?, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             shop_id,
             data.get('name'),
@@ -178,7 +178,7 @@ def register_shop():
         
         cursor.execute('''
             INSERT INTO shop_devices (id, app_id, shop_id, device_slot, status, registered_at)
-            VALUES (?, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
         ''', (device_id, app_id, shop_id, 1, 'pending', current_time))
     
     return jsonify({
@@ -234,12 +234,12 @@ def update_shop(shop_id):
         
         cursor.execute('''
             UPDATE shops SET
-                name = COALESCE(?, name),
-                owner_name = COALESCE(?, owner_name),
-                owner_surname = COALESCE(?, owner_surname),
-                phone_number = COALESCE(?, phone_number),
-                services = COALESCE(?, services),
-                address = COALESCE(?, address),
+                name = COALESCE(%s, name),
+                owner_name = COALESCE(%s, owner_name),
+                owner_surname = COALESCE(%s, owner_surname),
+                phone_number = COALESCE(%s, phone_number),
+                services = COALESCE(%s, services),
+                address = COALESCE(%s, address),
                 updated_at = %s
             WHERE id = %s
         ''', (
@@ -290,7 +290,7 @@ def create_item(shop_id):
         
         cursor.execute('''
             INSERT INTO items (id, local_id, shop_id, name, category, price_usd, price_zwg, quantity, created_at)
-            VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             item_id,
             local_id,
@@ -319,11 +319,11 @@ def update_item(shop_id, item_id):
         
         cursor.execute('''
             UPDATE items SET
-                name = COALESCE(?, name),
-                category = COALESCE(?, category),
-                price_usd = COALESCE(?, price_usd),
-                price_zwg = COALESCE(?, price_zwg),
-                quantity = COALESCE(?, quantity),
+                name = COALESCE(%s, name),
+                category = COALESCE(%s, category),
+                price_usd = COALESCE(%s, price_usd),
+                price_zwg = COALESCE(%s, price_zwg),
+                quantity = COALESCE(%s, quantity),
                 updated_at = %s
             WHERE (id = %s OR local_id = %s) AND shop_id = %s
         ''', (
@@ -400,7 +400,7 @@ def create_sale(shop_id):
         cursor.execute('''
             INSERT INTO sales (id, local_id, shop_id, item_id, item_name, quantity, total_usd, total_zwg,
                              payment_method, debt_used_usd, debt_used_zwg, debt_id, sale_date)
-            VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             sale_id,
             local_id,
@@ -504,7 +504,7 @@ def create_debt(shop_id):
         
         cursor.execute('''
             INSERT INTO debts (id, local_id, shop_id, customer_name, amount_usd, amount_zwg, type, notes, created_at)
-            VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             debt_id,
             local_id,
@@ -533,11 +533,11 @@ def update_debt(shop_id, debt_id):
         
         cursor.execute('''
             UPDATE debts SET
-                customer_name = COALESCE(?, customer_name),
-                amount_usd = COALESCE(?, amount_usd),
-                amount_zwg = COALESCE(?, amount_zwg),
-                type = COALESCE(?, type),
-                notes = COALESCE(?, notes),
+                customer_name = COALESCE(%s, customer_name),
+                amount_usd = COALESCE(%s, amount_usd),
+                amount_zwg = COALESCE(%s, amount_zwg),
+                type = COALESCE(%s, type),
+                notes = COALESCE(%s, notes),
                 updated_at = %s
             WHERE (id = %s OR local_id = %s) AND shop_id = %s
         ''', (
@@ -628,7 +628,7 @@ def sync_data(shop_id):
                 item_id = generate_id('ITEM_')
                 cursor.execute('''
                     INSERT INTO items (id, local_id, shop_id, name, category, price_usd, price_zwg, quantity, created_at)
-                    VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (item_id, local_id, shop_id, item.get('name'), item.get('category'),
                       item.get('price_usd', 0), item.get('price_zwg', 0), item.get('quantity', 0),
                       item.get('created_at', get_timestamp())))
@@ -642,7 +642,7 @@ def sync_data(shop_id):
                 cursor.execute('''
                     INSERT INTO sales (id, local_id, shop_id, item_id, item_name, quantity, total_usd, total_zwg,
                                       payment_method, debt_used_usd, debt_used_zwg, debt_id, sale_date)
-                    VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (sale_id, local_id, shop_id, sale.get('item_id'), sale.get('item_name'),
                       sale.get('quantity', 0), sale.get('total_usd', 0), sale.get('total_zwg', 0),
                       sale.get('payment_method', 'CASH'), sale.get('debt_used_usd', 0),
@@ -667,13 +667,13 @@ def sync_data(shop_id):
                 debt_id = generate_id('DEBT_')
                 cursor.execute('''
                     INSERT INTO debts (id, local_id, shop_id, customer_name, amount_usd, amount_zwg, type, notes, created_at)
-                    VALUES (?, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ''', (debt_id, local_id, shop_id, debt.get('customer_name'), debt.get('amount_usd', 0),
                       debt.get('amount_zwg', 0), debt.get('type', 'CREDIT_USED'), debt.get('notes', ''),
                       debt.get('created_at', get_timestamp())))
                 results['debts']['created'] += 1
         
-        cursor.execute('INSERT INTO sync_logs (shop_id, success) VALUES (?, 1)', (shop_id,))
+        cursor.execute('INSERT INTO sync_logs (shop_id, success) VALUES (%s, 1)', (shop_id,))
     
     return jsonify({
         'message': 'Sync completed successfully',
@@ -709,7 +709,7 @@ def create_product_key():
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO product_keys (id, product_key, status, created_at)
-            VALUES (?, %s, %s, %s)
+            VALUES (%s, %s, %s, %s)
         ''', (key_id, product_key, 'unused', current_time))
     
     return jsonify({
@@ -886,7 +886,7 @@ def register_new_device(shop_id):
         
         cursor.execute('''
             INSERT INTO shop_devices (id, app_id, shop_id, device_slot, status, registered_at)
-            VALUES (?, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
         ''', (device_id, app_id, shop_id, next_slot, 'pending', current_time))
     
     return jsonify({
@@ -1110,7 +1110,7 @@ def admin_create_product_key():
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO product_keys (id, product_key, status, created_at)
-            VALUES (?, %s, 'unused', %s)
+            VALUES (%s, %s, 'unused', %s)
         ''', (key_id, product_key, get_timestamp()))
     
     return jsonify({
@@ -1186,7 +1186,7 @@ def get_admin_stats():
         
         cursor.execute("""
             SELECT COUNT(*) as total FROM shop_devices 
-            WHERE expires_at IS NOT NULL AND expires_at < ?
+            WHERE expires_at IS NOT NULL AND expires_at < %s
         """, (current_time,))
         expired_subscriptions = cursor.fetchone()['total']
         
