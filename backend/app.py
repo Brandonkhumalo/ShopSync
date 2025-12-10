@@ -1273,6 +1273,26 @@ def mark_subscription_paid(shop_id):
             'new_expiry': new_end
         })
 
+@app.route('/api/admin/shops/<shop_id>', methods=['DELETE'])
+@require_admin
+def admin_delete_shop(shop_id):
+    with get_db_context() as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT id FROM shops WHERE id = %s', (shop_id,))
+        if not cursor.fetchone():
+            return jsonify({'error': 'Shop not found'}), 404
+        
+        cursor.execute('DELETE FROM sync_logs WHERE shop_id = %s', (shop_id,))
+        cursor.execute('DELETE FROM debts WHERE shop_id = %s', (shop_id,))
+        cursor.execute('DELETE FROM sales WHERE shop_id = %s', (shop_id,))
+        cursor.execute('DELETE FROM items WHERE shop_id = %s', (shop_id,))
+        cursor.execute('DELETE FROM shop_devices WHERE shop_id = %s', (shop_id,))
+        cursor.execute('DELETE FROM product_keys WHERE shop_id = %s', (shop_id,))
+        cursor.execute('DELETE FROM shops WHERE id = %s', (shop_id,))
+        
+        return jsonify({'message': 'Shop and all related data deleted successfully'})
+
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')
 
 @app.route('/admin')
