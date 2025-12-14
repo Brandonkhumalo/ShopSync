@@ -798,6 +798,16 @@ def activate_product_key(shop_id):
                 last_seen = %s
             WHERE app_id = %s AND shop_id = %s
         ''', (product_key, current_time, expires_at, current_time, app_id, shop_id))
+        
+        cursor.execute('''
+            UPDATE shops SET 
+                payment_status = 'paid',
+                subscription_start = COALESCE(subscription_start, %s),
+                subscription_end = %s,
+                last_payment_date = %s,
+                activated_at = COALESCE(activated_at, %s)
+            WHERE id = %s
+        ''', (current_time, expires_at, current_time, current_time, shop_id))
     
     return jsonify({
         'message': 'Product key activated successfully',
@@ -977,6 +987,14 @@ def renew_device_license(shop_id, app_id):
                 last_seen = %s
             WHERE app_id = %s AND shop_id = %s
         ''', (product_key, current_time, expires_at, current_time, app_id, shop_id))
+        
+        cursor.execute('''
+            UPDATE shops SET 
+                payment_status = 'paid',
+                subscription_end = %s,
+                last_payment_date = %s
+            WHERE id = %s
+        ''', (expires_at, current_time, shop_id))
     
     return jsonify({
         'message': 'License renewed successfully',
